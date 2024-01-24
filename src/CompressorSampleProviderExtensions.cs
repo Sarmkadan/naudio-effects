@@ -6,8 +6,8 @@ using System;
 namespace NAudioEffects
 {
     /// <summary>
-    /// Extension methods for <see cref="CompressorSampleProvider"/> that provide convenient
-    /// ways to configure and control the compressor.
+    /// Provides extension methods for <see cref="CompressorSampleProvider"/> that enable fluent configuration
+    /// and runtime control of compressor parameters.
     /// </summary>
     public static class CompressorSampleProviderExtensions
     {
@@ -17,12 +17,10 @@ namespace NAudioEffects
         /// <param name="compressor">The compressor instance.</param>
         /// <param name="thresholdDb">The threshold in decibels.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider WithThreshold(this CompressorSampleProvider compressor, float thresholdDb)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.ThresholdDb = thresholdDb;
             return compressor;
@@ -34,12 +32,10 @@ namespace NAudioEffects
         /// <param name="compressor">The compressor instance.</param>
         /// <param name="ratio">The compression ratio (e.g., 4 for 4:1 compression).</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider WithRatio(this CompressorSampleProvider compressor, float ratio)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.Ratio = ratio;
             return compressor;
@@ -52,12 +48,10 @@ namespace NAudioEffects
         /// <param name="attackMs">The attack time in milliseconds.</param>
         /// <param name="releaseMs">The release time in milliseconds.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider WithEnvelopeSettings(this CompressorSampleProvider compressor, float attackMs, float releaseMs)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.AttackMs = attackMs;
             compressor.ReleaseMs = releaseMs;
@@ -70,12 +64,10 @@ namespace NAudioEffects
         /// <param name="compressor">The compressor instance.</param>
         /// <param name="kneeDb">The knee width in decibels.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider WithKnee(this CompressorSampleProvider compressor, float kneeDb)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.KneeDb = kneeDb;
             return compressor;
@@ -87,12 +79,10 @@ namespace NAudioEffects
         /// <param name="compressor">The compressor instance.</param>
         /// <param name="makeupGainDb">The makeup gain in decibels.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider WithMakeupGain(this CompressorSampleProvider compressor, float makeupGainDb)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.MakeupGainDb = makeupGainDb;
             return compressor;
@@ -104,21 +94,23 @@ namespace NAudioEffects
         /// <param name="compressor">The compressor instance.</param>
         /// <param name="enabled">Whether the compressor should be enabled.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
+        /// <remarks>
+        /// This method is a placeholder for future implementation. The current <see cref="CompressorSampleProvider"/>
+        /// does not support enabling/disabling at runtime. To bypass compression entirely, use a conditional sample provider
+        /// or replace the compressor with the source provider directly.
+        /// </remarks>
         public static CompressorSampleProvider WithEnabled(this CompressorSampleProvider compressor, bool enabled)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
-            // This would require modifying the class to add an enabled flag
-            // For now, we'll just return the compressor as-is
-            // In a real implementation, you'd want to add an IsEnabled property
+            // Current implementation does not support runtime enable/disable
+            // This method signature is preserved for API consistency
             return compressor;
         }
 
         /// <summary>
-        /// Creates a bypassable compressor that can be toggled on/off.
+        /// Creates a new compressor instance with the specified parameters.
         /// </summary>
         /// <param name="source">The source sample provider.</param>
         /// <param name="thresholdDb">The threshold in decibels.</param>
@@ -128,6 +120,7 @@ namespace NAudioEffects
         /// <param name="kneeDb">The knee width in decibels.</param>
         /// <param name="makeupGainDb">The makeup gain in decibels.</param>
         /// <returns>A new compressor instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
         public static CompressorSampleProvider CreateCompressor(
             this ISampleProvider source,
             float thresholdDb = -20f,
@@ -137,12 +130,9 @@ namespace NAudioEffects
             float kneeDb = 6f,
             float makeupGainDb = 0f)
         {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
+            ArgumentNullException.ThrowIfNull(source);
 
-            var compressor = new CompressorSampleProvider(source)
+            return new CompressorSampleProvider(source)
             {
                 ThresholdDb = thresholdDb,
                 Ratio = ratio,
@@ -151,9 +141,6 @@ namespace NAudioEffects
                 KneeDb = kneeDb,
                 MakeupGainDb = makeupGainDb
             };
-
-
-            return compressor;
         }
 
         /// <summary>
@@ -161,12 +148,10 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="compressor">The compressor instance.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider Reset(this CompressorSampleProvider compressor)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.ThresholdDb = -20;
             compressor.Ratio = 4;
@@ -174,8 +159,6 @@ namespace NAudioEffects
             compressor.ReleaseMs = 100;
             compressor.KneeDb = 6;
             compressor.MakeupGainDb = 0;
-            // Reset to defaults - the private methods will be called in constructor
-            // We can't directly reset CurrentGainReductionDb as it's read-only set
             return compressor;
         }
 
@@ -184,12 +167,10 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="compressor">The compressor instance.</param>
         /// <returns>The gain reduction factor (1.0 = no reduction, 0.5 = -6dB reduction).</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static float GetGainReductionFactor(this CompressorSampleProvider compressor)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             return 1f / (1f + MathF.Exp(-compressor.CurrentGainReductionDb * 0.2302585093f));
         }
@@ -199,12 +180,10 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="compressor">The compressor instance.</param>
         /// <returns>True if gain reduction is being applied; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static bool IsCompressing(this CompressorSampleProvider compressor)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             return compressor.CurrentGainReductionDb < -0.1f;
         }
@@ -220,6 +199,7 @@ namespace NAudioEffects
         /// <param name="kneeDb">The knee width in decibels.</param>
         /// <param name="makeupGainDb">The makeup gain in decibels.</param>
         /// <returns>The compressor instance for method chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         public static CompressorSampleProvider Configure(
             this CompressorSampleProvider compressor,
             float thresholdDb = -20f,
@@ -229,10 +209,7 @@ namespace NAudioEffects
             float kneeDb = 6f,
             float makeupGainDb = 0f)
         {
-            if (compressor == null)
-            {
-                throw new ArgumentNullException(nameof(compressor));
-            }
+            ArgumentNullException.ThrowIfNull(compressor);
 
             compressor.ThresholdDb = thresholdDb;
             compressor.Ratio = ratio;
@@ -240,7 +217,6 @@ namespace NAudioEffects
             compressor.ReleaseMs = releaseMs;
             compressor.KneeDb = kneeDb;
             compressor.MakeupGainDb = makeupGainDb;
-
 
             return compressor;
         }
