@@ -58,7 +58,7 @@ namespace NAudioEffects
                 float maxSample = 0f;
                 for (int c = 0; c < channels; c++)
                 {
-                    float sample = buffer[offset + i + c];
+                    float sample = Math.Abs(buffer[offset + i + c]);
                     if (sample > maxSample) maxSample = sample;
                 }
 
@@ -116,6 +116,11 @@ namespace NAudioEffects
         /// Gets the detected silence regions
         /// </summary>
         public IReadOnlyList<SilenceRegion> Regions => regions.AsReadOnly();
+
+        /// <summary>
+        /// Gets the total duration of audio processed so far.
+        /// </summary>
+        public TimeSpan TotalDuration => TimeSpan.FromSeconds(totalSamplesProcessed / (double)sampleRate);
 
         /// <summary>
         /// Represents a region of silence in audio

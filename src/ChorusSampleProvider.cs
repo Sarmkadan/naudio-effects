@@ -168,11 +168,13 @@ namespace NAudioEffects
 
             if (requiredCapacity > _delayBuffer.Capacity)
             {
+                // Only reset delay-line state when the buffer is actually reallocated;
+                // resetting on every block would restart the LFO phase and write position
+                // each call, producing audible glitches instead of continuous modulation.
                 _delayBuffer = new CircularBuffer(requiredCapacity);
+                _writeIndex = 0;
+                _lfoPhase = 0;
             }
-
-            _writeIndex = 0;
-            _lfoPhase = 0;
         }
 
         /// <summary>

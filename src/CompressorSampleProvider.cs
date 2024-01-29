@@ -11,21 +11,17 @@ namespace NAudioEffects
     public class CompressorSampleProvider : EffectSampleProviderBase
     {
         private readonly EnvelopeFollower _envelopeFollower;
-        private float _thresholdLinear;
-        private float _kneeLinear;
-        private float _makeupGainLinear;
+        private readonly int _sampleRate;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CompressorSampleProvider"/> class.
         /// </summary>
         /// <param name="source">The source sample provider.</param>
-        public CompressorSampleProvider(ISampleProvider source) 
+        public CompressorSampleProvider(ISampleProvider source)
             : base(source)
         {
-            _envelopeFollower = new EnvelopeFollower(AttackMs, ReleaseMs, source.WaveFormat.SampleRate);
-            UpdateThreshold();
-            UpdateKnee();
-            UpdateMakeupGain();
+            _sampleRate = source.WaveFormat.SampleRate;
+            _envelopeFollower = new EnvelopeFollower(AttackMs, ReleaseMs, _sampleRate);
         }
 
         /// <summary>
@@ -70,21 +66,6 @@ namespace NAudioEffects
         /// <value>The current gain reduction in decibels.</value>
         public float CurrentGainReductionDb { get; private set; }
 
-        private void UpdateThreshold()
-        {
-            _thresholdLinear = DbToLinear(ThresholdDb);
-        }
-
-        private void UpdateKnee()
-        {
-            _kneeLinear = DbToLinear(KneeDb);
-        }
-
-        private void UpdateMakeupGain()
-        {
-            _makeupGainLinear = DbToLinear(MakeupGainDb);
-        }
-
         /// <summary>
         /// Processes the audio block.
         /// </summary>
@@ -93,40 +74,45 @@ namespace NAudioEffects
         /// <param name="count">The number of samples to process.</param>
         protected override void ProcessBlock(float[] buffer, int offset, int count)
         {
+            // Re-apply envelope timing every block so that changes to AttackMs/ReleaseMs
+            // made after construction actually take effect.
+            _envelopeFollower.SetParameters(AttackMs, ReleaseMs, _sampleRate);
             _envelopeFollower.Process(buffer, offset, count);
 
             float envelope = _envelopeFollower.Envelope;
+            float envelopeDb = LinearToDb(envelope);
 
-            float threshold = _thresholdLinear;
-            float knee = _kneeLinear;
-            float ratio = Ratio;
-            float makeupGain = _makeupGainLinear;
+            float threshold = ThresholdDb;
+            float knee = Math.Max(KneeDb, 0f);
+            float ratio = Math.Max(Ratio, 1f);
+            float makeupGainLinear = DbToLinear(MakeupGainDb);
+
+            float overshoot = envelopeDb - threshold;
+            float gainReductionDb;
+            if (knee <= 0f)
+            {
+                gainReductionDb = overshoot > 0f ? (1f / ratio - 1f) * overshoot : 0f;
+            }
+            else if (2f * overshoot < -knee)
+            {
+                gainReductionDb = 0f;
+            }
+            else if (2f * Math.Abs(overshoot) <= knee)
+            {
+                float x = overshoot + (knee / 2f);
+                gainReductionDb = (1f / ratio - 1f) * (x * x) / (2f * knee);
+            }
+            else
+            {
+                gainReductionDb = (1f / ratio - 1f) * overshoot;
+            }
+
+            CurrentGainReductionDb = gainReductionDb;
+            float gain = DbToLinear(gainReductionDb) * makeupGainLinear;
 
             for (int i = 0; i < count; i++)
             {
-                float sample = buffer[offset + i];
-
-                // Calculate gain reduction
-                float gainReduction = 0;
-                if (envelope > threshold)
-                {
-                    float excess = envelope - threshold;
-                    if (excess > knee)
-                    {
-                        gainReduction = (excess - knee) / (ratio - 1);
-                    }
-                    else
-                    {
-                        gainReduction = excess / (ratio * (knee / threshold));
-                    }
-                }
-
-                // Apply gain reduction and makeup gain
-                float gain = 1 / (1 + gainReduction);
-                buffer[offset + i] = sample * gain * makeupGain;
-
-                // Update current gain reduction
-                CurrentGainReductionDb = LinearToDb(gain);
+                buffer[offset + i] *= gain;
             }
         }
     }

@@ -147,7 +147,14 @@ namespace NAudioEffects
         public static bool IsEntirelySilence(this SilenceDetector detector)
         {
             ArgumentNullException.ThrowIfNull(detector);
-            return detector.Regions.Count == 1;
+
+            if (detector.Regions.Count != 1)
+            {
+                return false;
+            }
+
+            var region = detector.Regions[0];
+            return region.Start == TimeSpan.Zero && region.End >= detector.TotalDuration;
         }
     }
 }

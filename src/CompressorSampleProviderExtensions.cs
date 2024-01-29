@@ -96,16 +96,14 @@ namespace NAudioEffects
         /// <returns>The compressor instance for method chaining.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="compressor"/> is null.</exception>
         /// <remarks>
-        /// This method is a placeholder for future implementation. The current <see cref="CompressorSampleProvider"/>
-        /// does not support enabling/disabling at runtime. To bypass compression entirely, use a conditional sample provider
-        /// or replace the compressor with the source provider directly.
+        /// Disabling the compressor sets <see cref="EffectSampleProviderBase.Bypass"/> so that samples pass
+        /// through unmodified; enabling it clears the bypass so compression resumes.
         /// </remarks>
         public static CompressorSampleProvider WithEnabled(this CompressorSampleProvider compressor, bool enabled)
         {
             ArgumentNullException.ThrowIfNull(compressor);
 
-            // Current implementation does not support runtime enable/disable
-            // This method signature is preserved for API consistency
+            compressor.Bypass = !enabled;
             return compressor;
         }
 
