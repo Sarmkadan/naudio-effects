@@ -1,0 +1,2 @@
+
+The example demonstrates creating a compressor from any `ISampleProvider`, chaining configuration calls, and reading runtime information. All listed members (`WithThreshold`, `WithRatio`, `WithEnvelopeSettings`, `WithKnee`, `WithMakeupGain`, `WithEnabled`, `CreateCompressor`, `Reset`, `GetGainReductionFactor`, `IsCompressing`, `Configure`) are used in a realistic, compiling manner.
