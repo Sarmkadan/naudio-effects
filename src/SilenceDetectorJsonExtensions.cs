@@ -8,7 +8,7 @@ namespace NAudioEffects
     /// </summary>
     public static class SilenceDetectorJsonExtensions
     {
-        // Cached options using camel‑case naming.
+        // Cached options using camel-case naming.
         private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -18,9 +18,9 @@ namespace NAudioEffects
         /// Serializes the <see cref="SilenceDetector"/> instance to a JSON string.
         /// </summary>
         /// <param name="value">The instance to serialize.</param>
-        /// <param name="indented">If <c>true</c>, the output JSON will be formatted with indentation.</param>
+        /// <param name="indented">Whether to format the output JSON with indentation.</param>
         /// <returns>A JSON representation of <paramref name="value"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         public static string ToJson(this SilenceDetector value, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -36,8 +36,8 @@ namespace NAudioEffects
         /// Deserializes a JSON string into a <see cref="SilenceDetector"/> instance.
         /// </summary>
         /// <param name="json">The JSON string representing a <see cref="SilenceDetector"/>.</param>
-        /// <returns>The deserialized <see cref="SilenceDetector"/>, or <c>null</c> if the JSON does not represent a value.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or empty.</exception>
+        /// <returns>The deserialized <see cref="SilenceDetector"/>, or <see langword="null"/> if the JSON does not represent a value.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <see langword="null"/> or empty.</exception>
         /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be mapped to <see cref="SilenceDetector"/>.</exception>
         public static SilenceDetector? FromJson(string json)
         {
@@ -51,10 +51,10 @@ namespace NAudioEffects
         /// <param name="json">The JSON string representing a <see cref="SilenceDetector"/>.</param>
         /// <param name="value">
         /// When this method returns, contains the deserialized <see cref="SilenceDetector"/> if the operation succeeded;
-        /// otherwise, <c>null</c>.
+        /// otherwise, <see langword="null"/>.
         /// </param>
-        /// <returns><c>true</c> if deserialization succeeded; otherwise, <c>false</c>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or empty.</exception>
+        /// <returns><see langword="true"/> if deserialization succeeded; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <see langword="null"/> or empty.</exception>
         public static bool TryFromJson(string json, out SilenceDetector? value)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
