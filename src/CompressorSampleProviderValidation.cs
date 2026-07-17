@@ -29,7 +29,7 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="value">The compressor sample provider to validate.</param>
         /// <returns>A list of validation problems; empty if the instance is valid.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
         public static IReadOnlyList<string> Validate(this CompressorSampleProvider? value)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -86,17 +86,14 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="value">The compressor sample provider to check.</param>
         /// <returns><see langword="true"/> if the instance is valid; otherwise, <see langword="false"/>.</returns>
-        public static bool IsValid(this CompressorSampleProvider? value)
-        {
-            return value is not null && Validate(value).Count == 0;
-        }
+        public static bool IsValid(this CompressorSampleProvider? value) => value is not null && Validate(value).Count == 0;
 
         /// <summary>
         /// Ensures that the specified <see cref="CompressorSampleProvider"/> instance is valid.
         /// </summary>
         /// <param name="value">The compressor sample provider to validate.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when the instance is invalid, containing a list of validation problems.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">The instance is invalid. Contains a list of validation problems.</exception>
         public static void EnsureValid(this CompressorSampleProvider? value)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -107,7 +104,7 @@ namespace NAudioEffects
                 throw new ArgumentException(
                     $"CompressorSampleProvider is invalid. Problems:\n- {
                     string.Join("\n- ", problems)
-                }");
+                    }");
             }
         }
     }
