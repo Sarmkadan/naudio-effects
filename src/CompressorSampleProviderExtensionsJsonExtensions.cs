@@ -26,11 +26,9 @@ namespace NAudioEffects
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var options = indented 
-                ? new JsonSerializerOptions(_options) { WriteIndented = true } 
-                : _options;
-                
-            return JsonSerializer.Serialize(value, options);
+            return JsonSerializer.Serialize(value, indented
+                ? new JsonSerializerOptions(_options) { WriteIndented = true }
+                : _options);
         }
 
         /// <summary>
