@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace NAudioEffects
 {
@@ -86,7 +85,7 @@ namespace NAudioEffects
         /// <returns><see langword="true"/> if the instance is valid; otherwise, <see langword="false"/>.</returns>
         public static bool IsValid(this SilenceDetector? value)
         {
-            return value is not null && Validate(value).Count == 0;
+            return value is { } detector && Validate(detector).Count == 0;
         }
 
         /// <summary>
@@ -103,10 +102,80 @@ namespace NAudioEffects
             if (problems.Count > 0)
             {
                 throw new ArgumentException(
-                    $"SilenceDetector is invalid. Problems:\n- {
-                    string.Join("\n- ", problems)
+                    $"SilenceDetector is invalid.{Environment.NewLine}- {
+                    string.Join($"{Environment.NewLine}- ", problems)
                     }");
             }
         }
-    }
+    /// <summary>
+/// Validates a <see cref="SilenceDetector.SilenceRegion"/> instance and returns a list of validation problems.
+/// </summary>
+/// <param name="value">The silence region to validate.</param>
+/// <returns>A read-only list of validation problems; empty if the region is valid.</returns>
+/// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+public static IReadOnlyList<string> Validate(this SilenceDetector.SilenceRegion? value)
+{
+	ArgumentNullException.ThrowIfNull(value);
+
+	var problems = new List<string>();
+
+	// Validate Start
+	if (value.Start < TimeSpan.Zero)
+	{
+		problems.Add($"Start cannot be negative. Actual: {value.Start}.");
+	}
+
+	// Validate End
+	if (value.End < TimeSpan.Zero)
+	{
+		problems.Add($"End cannot be negative. Actual: {value.End}.");
+	}
+
+	// Validate Start <= End
+	if (value.Start > value.End)
+	{
+		problems.Add($"Start ({value.Start}) cannot be greater than End ({value.End}).");
+	}
+
+	// Validate Duration is reasonable (should never be negative based on above checks)
+	var duration = value.Duration;
+	if (duration < TimeSpan.Zero)
+	{
+		problems.Add($"Duration cannot be negative. Actual: {duration}.");
+	}
+
+	return problems.AsReadOnly();
+}
+
+/// <summary>
+/// Determines whether a <see cref="SilenceDetector.SilenceRegion"/> instance is valid.
+/// </summary>
+/// <param name="value">The silence region to check.</param>
+/// <returns><see langword="true"/> if the region is valid; otherwise, <see langword="false"/>.</returns>
+public static bool IsValid(this SilenceDetector.SilenceRegion? value)
+{
+	return value is { } region && Validate(region).Count == 0;
+}
+
+/// <summary>
+/// Ensures that a <see cref="SilenceDetector.SilenceRegion"/> instance is valid.
+/// </summary>
+/// <param name="value">The silence region to validate.</param>
+/// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+/// <exception cref="ArgumentException">Thrown when the region is invalid, containing a list of validation problems.</exception>
+public static void EnsureValid(this SilenceDetector.SilenceRegion? value)
+{
+	ArgumentNullException.ThrowIfNull(value);
+
+	var problems = Validate(value);
+	if (problems.Count > 0)
+	{
+		throw new ArgumentException(
+			$"SilenceRegion is invalid.{Environment.NewLine}- {
+			string.Join($"{Environment.NewLine}- ", problems)
+		}");
+	}
+}
+
+}
 }
