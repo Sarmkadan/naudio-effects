@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NAudioEffects
 {
@@ -82,48 +83,30 @@ namespace NAudioEffects
         /// Gets the longest silence region detected.
         /// </summary>
         /// <param name="detector">The silence detector instance.</param>
-        /// <returns>The longest silence region, or null if no regions detected.</returns>
+        /// <returns>The longest silence region, or <see langword="default"/> if no regions detected.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="detector"/> is null.</exception>
         public static SilenceDetector.SilenceRegion GetLongestSilence(this SilenceDetector detector)
         {
             ArgumentNullException.ThrowIfNull(detector);
 
-            SilenceDetector.SilenceRegion longest = default;
-            bool found = false;
-            foreach (var region in detector.Regions)
-            {
-                if (!found || region.Duration > longest.Duration)
-                {
-                    longest = region;
-                    found = true;
-                }
-            }
-
-            return found ? longest : default;
+            return detector.Regions.Count > 0
+                ? detector.Regions.MaxBy(r => r.Duration)
+                : default;
         }
 
         /// <summary>
         /// Gets the shortest silence region detected.
         /// </summary>
         /// <param name="detector">The silence detector instance.</param>
-        /// <returns>The shortest silence region, or default if no regions detected.</returns>
+        /// <returns>The shortest silence region, or <see langword="default"/> if no regions detected.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="detector"/> is null.</exception>
         public static SilenceDetector.SilenceRegion GetShortestSilence(this SilenceDetector detector)
         {
             ArgumentNullException.ThrowIfNull(detector);
 
-            SilenceDetector.SilenceRegion shortest = default;
-            bool found = false;
-            foreach (var region in detector.Regions)
-            {
-                if (!found || region.Duration < shortest.Duration)
-                {
-                    shortest = region;
-                    found = true;
-                }
-            }
-
-            return found ? shortest : default;
+            return detector.Regions.Count > 0
+                ? detector.Regions.MinBy(r => r.Duration)
+                : default;
         }
 
         /// <summary>
@@ -148,13 +131,11 @@ namespace NAudioEffects
         {
             ArgumentNullException.ThrowIfNull(detector);
 
-            if (detector.Regions.Count != 1)
+            return detector.Regions switch
             {
-                return false;
-            }
-
-            var region = detector.Regions[0];
-            return region.Start == TimeSpan.Zero && region.End >= detector.TotalDuration;
+                { Count: 1 } regions => regions[0].Start == TimeSpan.Zero && regions[0].End >= detector.TotalDuration,
+                _ => false
+            };
         }
     }
 }
