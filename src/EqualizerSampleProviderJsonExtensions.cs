@@ -8,7 +8,7 @@ namespace NAudioEffects
     /// </summary>
     public static class EqualizerSampleProviderJsonExtensions
     {
-        // Cached options using camel‑case naming.
+        // Cached options using camel-case naming.
         private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -22,15 +22,7 @@ namespace NAudioEffects
         /// <returns>A JSON representation of <paramref name="value"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
         public static string ToJson(this EqualizerSampleProvider value, bool indented = false)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            var options = indented
-                ? new JsonSerializerOptions(_options) { WriteIndented = true }
-                : _options;
-
-            return JsonSerializer.Serialize(value, options);
-        }
+            => JsonSerializer.Serialize(value, indented ? new JsonSerializerOptions(_options) { WriteIndented = true } : _options);
 
         /// <summary>
         /// Deserializes a JSON string into a <see cref="EqualizerSampleProvider"/> instance.
