@@ -11,7 +11,7 @@ namespace NAudioEffects
     /// </summary>
     public static class EnvelopeFollowerJsonExtensions
     {
-        // Cached options using camel‑case naming. WriteIndented is applied per call when requested.
+        // Cached options using camel-case naming. WriteIndented is applied per call when requested.
         private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -40,12 +40,15 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="json">The JSON string representing an <see cref="EnvelopeFollower"/>.</param>
         /// <returns>The deserialized <see cref="EnvelopeFollower"/>, or <c>null</c> if the JSON does not represent a value.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty.</exception>
         /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be mapped to <see cref="EnvelopeFollower"/>.</exception>
         public static EnvelopeFollower? FromJson(string json)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
-            return JsonSerializer.Deserialize<EnvelopeFollower>(json, _options);
+            var result = JsonSerializer.Deserialize<EnvelopeFollower>(json, _options);
+            ArgumentNullException.ThrowIfNull(result, nameof(json));
+            return result;
         }
 
         /// <summary>
@@ -57,7 +60,8 @@ namespace NAudioEffects
         /// otherwise, <c>null</c>.
         /// </param>
         /// <returns><c>true</c> if deserialization succeeded; otherwise, <c>false</c>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty.</exception>
         public static bool TryFromJson(string json, out EnvelopeFollower? value)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
@@ -65,7 +69,7 @@ namespace NAudioEffects
             try
             {
                 value = JsonSerializer.Deserialize<EnvelopeFollower>(json, _options);
-                return true;
+                return value is not null;
             }
             catch (JsonException)
             {
