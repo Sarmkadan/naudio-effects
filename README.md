@@ -46,3 +46,14 @@ if (silenceDetector.HasSilence())
 }
 ```
 
+## ChorusSampleProvider
+The ChorusSampleProvider class applies a chorus effect to an audio stream. It creates a shimmering, thickening effect by duplicating the input signal with a delayed, pitch-modulated copy. You can adjust the RateHz, DepthMs, Mix, and BaseDelayMs properties to fine-tune the chorus effect.
+
+**Usage example**
+```csharp
+var chorus = new ChorusSampleProvider(new SampleProvider());
+chorus.RateHz = 0.5f;
+chorus.DepthMs = 2.0f;
+chorus.Mix = 0.2f;
+chorus.BaseDelayMs = 15.0f;
+```
