@@ -15,3 +15,34 @@ Extension methods for `CompressorSampleProvider` give a fluent, immutable‑styl
 
 **Usage example**
 
+## SilenceDetectorExtensions
+Extension methods for `SilenceDetector` that provide convenient querying and analysis of detected silence regions. These methods allow you to quickly determine if silence was detected, count regions, calculate durations (total, average, longest, shortest), and check if the entire audio is silence.
+
+**Usage example**
+
+```csharp
+// Create a silence detector with a threshold of -40dB
+var silenceDetector = new SilenceDetector(
+    sampleRate: 44100,
+    silenceThresholdDb: -40.0,
+    minimumSilenceDuration: TimeSpan.FromMilliseconds(500)
+);
+
+// Process audio samples...
+// silenceDetector.Process(sampleBuffer);
+
+// Query silence statistics
+if (silenceDetector.HasSilence())
+{
+    int regionCount = silenceDetector.GetSilenceRegionCount();
+    double totalMs = silenceDetector.GetTotalSilenceDurationMilliseconds();
+    TimeSpan totalDuration = silenceDetector.GetTotalSilenceDuration();
+    TimeSpan averageDuration = silenceDetector.GetAverageSilenceDuration();
+    
+    var longestSilence = silenceDetector.GetLongestSilence();
+    var shortestSilence = silenceDetector.GetShortestSilence();
+    
+    bool entirelySilence = silenceDetector.IsEntirelySilence();
+}
+```
+
