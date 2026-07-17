@@ -1,0 +1,6 @@
+
+## SilenceDetectorValidation
+The `SilenceDetectorValidation` class provides static extension methods that help you verify a `SilenceDetector` (and its nested `SilenceRegion` objects) is correctly configured. You can retrieve a list of validation problems, check validity with a boolean, or have the method throw an exception when the detector is invalid.
+
+**Usage example**
+
