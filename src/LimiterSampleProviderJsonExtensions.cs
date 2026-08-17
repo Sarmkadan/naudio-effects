@@ -14,11 +14,13 @@ namespace NAudioEffects
 
         public static LimiterSampleProvider? FromJson(string json)
         {
+            ArgumentException.ThrowIfNullOrEmpty(json);
             return JsonSerializer.Deserialize<LimiterSampleProvider>(json);
         }
 
         public static bool TryFromJson(string json, out LimiterSampleProvider? value)
         {
+            ArgumentException.ThrowIfNullOrEmpty(json);
             try
             {
                 value = FromJson(json);
