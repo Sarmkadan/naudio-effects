@@ -36,6 +36,7 @@ public class GainSampleProvider : EffectSampleProviderBase
             if (Math.Abs(_targetGainLinear - newGainLinear) > float.Epsilon)
             {
                 _targetGainLinear = newGainLinear;
+                // Ensure a smoothing period is scheduled even if SmoothingMs is zero.
                 _samplesUntilNextUpdate = _updateInterval;
             }
         }
@@ -78,7 +79,10 @@ public class GainSampleProvider : EffectSampleProviderBase
     /// <param name="samplesRead">The number of samples read into the buffer.</param>
     protected override void ProcessBlock(float[] buffer, int offset, int samplesRead)
     {
-        _updateInterval = (int)(SmoothingMs * _samplesPerMs);
+        // If smoothing is set to 0 (instant gain change), use a short default ramp (~10 ms)
+        // to avoid clicks. This mirrors the default smoothing behavior.
+        float rampMs = SmoothingMs > 0 ? SmoothingMs : 10f;
+        _updateInterval = (int)(rampMs * _samplesPerMs);
         if (_updateInterval < 1)
         {
             _updateInterval = 1;
