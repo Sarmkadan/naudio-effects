@@ -123,8 +123,11 @@ namespace NAudioEffects
             // Process samples
             for (int s = 0; s < samplesRead; s++)
             {
-                int sampleIndex = offset + s;
-                float inputSample = buffer[sampleIndex + channelIndex];
+                // Correctly account for offset and channel interleaving
+                int baseIndex = offset + s * WaveFormat.Channels;
+                int sampleIndex = baseIndex + channelIndex;
+
+                float inputSample = buffer[sampleIndex];
 
                 // Write to delay buffer
                 _delayBuffer.Write(inputSample);
@@ -146,7 +149,7 @@ namespace NAudioEffects
                 delayedSample += delayedSample * Feedback;
 
                 // Mix dry and wet signals
-                buffer[sampleIndex + channelIndex] = (inputSample * dryMix) + (delayedSample * wetMix);
+                buffer[sampleIndex] = (inputSample * dryMix) + (delayedSample * wetMix);
             }
         }
 
