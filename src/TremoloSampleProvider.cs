@@ -30,8 +30,29 @@ namespace NAudioEffects
         public TremoloSampleProvider(ISampleProvider source)
             : base(source)
         {
+            // Validate the incoming WaveFormat before using it.
+            ValidateWaveFormat(source.WaveFormat);
+
             _sampleRate = source.WaveFormat.SampleRate;
             _lfoPhase = 0.0f;
+        }
+
+        /// <summary>
+        /// Validates that the provided WaveFormat meets the requirements for effect processing.
+        /// Throws an <see cref="ArgumentException"/> if the format is invalid, including the
+        /// offending format details in the exception message.
+        /// </summary>
+        /// <param name="format">The WaveFormat to validate.</param>
+        private static void ValidateWaveFormat(WaveFormat format)
+        {
+            if (format.SampleRate <= 0)
+                throw new ArgumentException($"Invalid WaveFormat: SampleRate must be > 0, got {format.SampleRate}.");
+
+            if (format.Encoding != WaveFormatEncoding.IeeeFloat)
+                throw new ArgumentException($"Invalid WaveFormat: Encoding must be IEEE float, got {format.Encoding}.");
+
+            if (format.Channels <= 0)
+                throw new ArgumentException($"Invalid WaveFormat: Channels must be > 0, got {format.Channels}.");
         }
 
         /// <summary>

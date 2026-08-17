@@ -1,3 +1,4 @@
+using System;
 using NAudio.Wave;
 
 namespace NAudioEffects
@@ -74,6 +75,9 @@ namespace NAudioEffects
         /// <exception cref="ArgumentException">Thrown if source is not stereo (2 channels)</exception>
         public MidSideProcessor(ISampleProvider source) : base(source)
         {
+            // Validate the incoming WaveFormat before any other checks.
+            ValidateWaveFormat(source.WaveFormat);
+
             if (source.WaveFormat.Channels != 2)
             {
                 throw new ArgumentException("MidSideProcessor requires a stereo source (2 channels)", nameof(source));
@@ -84,6 +88,24 @@ namespace NAudioEffects
             _sideUpdateInterval = (int)(SideSmoothingMs * _samplesPerMs);
             if (_midUpdateInterval < 1) _midUpdateInterval = 1;
             if (_sideUpdateInterval < 1) _sideUpdateInterval = 1;
+        }
+
+        /// <summary>
+        /// Validates that the provided WaveFormat meets the requirements for effect processing.
+        /// Throws an <see cref="ArgumentException"/> if the format is invalid, including the
+        /// offending format details in the exception message.
+        /// </summary>
+        /// <param name="format">The WaveFormat to validate.</param>
+        private static void ValidateWaveFormat(WaveFormat format)
+        {
+            if (format.SampleRate <= 0)
+                throw new ArgumentException($"Invalid WaveFormat: SampleRate must be > 0, got {format.SampleRate}.");
+
+            if (format.Encoding != WaveFormatEncoding.IeeeFloat)
+                throw new ArgumentException($"Invalid WaveFormat: Encoding must be IEEE float, got {format.Encoding}.");
+
+            if (format.Channels <= 0)
+                throw new ArgumentException($"Invalid WaveFormat: Channels must be > 0, got {format.Channels}.");
         }
 
         /// <summary>
