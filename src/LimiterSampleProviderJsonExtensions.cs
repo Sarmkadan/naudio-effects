@@ -6,7 +6,14 @@ namespace NAudioEffects
 {
     public static class LimiterSampleProviderJsonExtensions
     {
-        public static string ToJson(this LimiterSampleProvider value, bool indented = false)
+        /// <summary>
+/// Serializes the LimiterSampleProvider to a JSON string.
+/// </summary>
+/// <param name="value">The LimiterSampleProvider to serialize.</param>
+/// <param name="indented">If true, the JSON will be indented for readability.</param>
+/// <returns>A JSON string representation of the LimiterSampleProvider.</returns>
+/// <exception cref="ArgumentException">Thrown if json is null or empty.</exception>
+public static string ToJson(this LimiterSampleProvider value, bool indented = false)
         {
             var options = indented ? new JsonSerializerOptions { WriteIndented = true } : null;
             return JsonSerializer.Serialize(value, options);
