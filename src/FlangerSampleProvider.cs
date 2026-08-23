@@ -55,6 +55,11 @@ namespace NAudioEffects
         public float Mix { get; set; } = DefaultMix;
 
         /// <summary>
+        /// Returns a string representation of the flanger parameters.
+        /// </summary>
+        public override string ToString() => $"FlangerSampleProvider {{ RateHz = {RateHz}, DepthMs = {DepthMs}, Feedback = {Feedback}, DelayMs = {DelayMs}, Mix = {Mix} }}";
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="FlangerSampleProvider"/> class.
         /// </summary>
         /// <param name="source">The source sample provider.</param>
