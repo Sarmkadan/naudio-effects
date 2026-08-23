@@ -28,6 +28,7 @@ namespace NAudioEffects
 
         /// <summary>
         /// Gets or sets a value indicating whether the effect should bypass processing.
+        /// When <see langword="true"/>, samples are passed through from the source without any processing.
         /// </summary>
         public bool Bypass { get; set; }
 
@@ -54,13 +55,18 @@ namespace NAudioEffects
         /// <param name="buffer">The buffer containing the samples.</param>
         /// <param name="offset">The offset in the buffer where the block starts.</param>
         /// <param name="samplesRead">The number of samples read into the buffer.</param>
+        /// <remarks>
+        /// Following the NAudio <see cref="ISampleProvider"/> convention, <paramref name="samplesRead"/>
+        /// counts individual floating-point values interleaved across all channels;
+        /// for example, a stereo block of 100 frames contains 200 samples.
+        /// </remarks>
         protected abstract void ProcessBlock(float[] buffer, int offset, int samplesRead);
 
         /// <summary>
         /// Converts a decibel value to a linear amplitude.
         /// </summary>
-        /// <param name="db">The decibel value.</param>
-        /// <returns>The linear amplitude.</returns>
+        /// <param name="db">The decibel value (dB), typically relative to digital full scale (dBFS).</param>
+        /// <returns>The linear amplitude, where 1 corresponds to 0 dB.</returns>
         protected static float DbToLinear(float db)
         {
             return (float)Math.Pow(10.0, db / 20.0);
@@ -69,8 +75,8 @@ namespace NAudioEffects
         /// <summary>
         /// Converts a linear amplitude to decibels.
         /// </summary>
-        /// <param name="linear">The linear amplitude.</param>
-        /// <returns>The decibel value.</returns>
+        /// <param name="linear">The linear amplitude, where 1 corresponds to 0 dB.</param>
+        /// <returns>The decibel value (dB); returns <see cref="float.NegativeInfinity"/> for non-positive input.</returns>
         protected static float LinearToDb(float linear)
         {
             if (linear <= 0f)

@@ -12,16 +12,17 @@ public class EnvelopeFollower
     private float _releaseCoefficient = 0f;
 
     /// <summary>
-    /// Gets the current envelope value (0 to 1).
+    /// Gets the current envelope value as a linear amplitude in the range 0 to 1,
+    /// where 1 corresponds to digital full scale (0 dBFS).
     /// </summary>
     public float Envelope => _envelope;
 
     /// <summary>
     /// Initializes a new instance of the EnvelopeFollower.
     /// </summary>
-    /// <param name="attackMs">Attack time in milliseconds.</param>
-    /// <param name="releaseMs">Release time in milliseconds.</param>
-    /// <param name="sampleRate">Audio sample rate.</param>
+    /// <param name="attackMs">Attack time in milliseconds (ms); controls how quickly the envelope rises toward louder signals.</param>
+    /// <param name="releaseMs">Release time in milliseconds (ms); controls how quickly the envelope falls toward quieter signals.</param>
+    /// <param name="sampleRate">Audio sample rate in hertz (Hz).</param>
     public EnvelopeFollower(float attackMs = 1f, float releaseMs = 200f, int sampleRate = 44100)
     {
         SetParameters(attackMs, releaseMs, sampleRate);
@@ -30,9 +31,9 @@ public class EnvelopeFollower
     /// <summary>
     /// Sets the time constants for the envelope follower.
     /// </summary>
-    /// <param name="attackMs">Attack time in milliseconds.</param>
-    /// <param name="releaseMs">Release time in milliseconds.</param>
-    /// <param name="sampleRate">Audio sample rate.</param>
+    /// <param name="attackMs">Attack time in milliseconds (ms).</param>
+    /// <param name="releaseMs">Release time in milliseconds (ms).</param>
+    /// <param name="sampleRate">Audio sample rate in hertz (Hz).</param>
     public void SetParameters(float attackMs, float releaseMs, int sampleRate)
     {
         _attackCoefficient = CalculateCoefficient(attackMs, sampleRate);
@@ -42,7 +43,7 @@ public class EnvelopeFollower
     /// <summary>
     /// Processes a block of audio samples and updates the envelope.
     /// </summary>
-    /// <param name="buffer">The sample buffer.</param>
+    /// <param name="buffer">The sample buffer containing interleaved samples.</param>
     /// <param name="offset">The offset into the buffer.</param>
     /// <param name="count">The number of samples to process.</param>
     public void Process(float[] buffer, int offset, int count)
@@ -66,8 +67,8 @@ public class EnvelopeFollower
     /// <summary>
     /// Calculates the smoothing coefficient for a given time constant and sample rate.
     /// </summary>
-    /// <param name="timeConstantMs">The time constant in milliseconds.</param>
-    /// <param name="sampleRate">The audio sample rate.</param>
+    /// <param name="timeConstantMs">The time constant in milliseconds (ms).</param>
+    /// <param name="sampleRate">The audio sample rate in hertz (Hz).</param>
     /// <returns>The smoothing coefficient.</returns>
     private float CalculateCoefficient(float timeConstantMs, int sampleRate)
     {
