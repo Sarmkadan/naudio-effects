@@ -81,7 +81,7 @@ namespace NAudioEffects
 
         /// <summary>
         /// Updates internal delay parameters based on current property values.
-        /// </summary>
+        /// </>
         private void UpdateDelayParameters()
         {
             // Calculate delay time in samples
@@ -198,6 +198,8 @@ namespace NAudioEffects
                 _lfoPhase = 0;
             }
         }
+
+        public override string ToString() => $"ChorusSampleProvider {{ RateHz = {RateHz}, DepthMs = {DepthMs}, Mix = {Mix}, BaseDelayMs = {BaseDelayMs} }}";
 
         /// <summary>
         /// Simple circular buffer for delay line implementation.
