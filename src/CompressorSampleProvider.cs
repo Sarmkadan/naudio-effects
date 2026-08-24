@@ -66,6 +66,8 @@ namespace NAudioEffects
         /// <value>The current gain reduction in decibels.</value>
         public float CurrentGainReductionDb { get; private set; }
 
+        public override string ToString() => $"CompressorSampleProvider {{ ThresholdDb = {ThresholdDb}, Ratio = {Ratio}, AttackMs = {AttackMs}, ReleaseMs = {ReleaseMs}, KneeDb = {KneeDb}, MakeupGainDb = {MakeupGainDb} }}";
+
         /// <summary>
         /// Processes the audio block.
         /// </summary>
