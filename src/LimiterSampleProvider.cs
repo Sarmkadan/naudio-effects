@@ -72,5 +72,12 @@ namespace NAudioEffects
                 buffer[offset + i] *= gain;
             }
         }
+
+        /// <summary>
+        /// Returns a concise, informative representation of this limiter.
+        /// </summary>
+        /// <returns>A string describing the limiter configuration.</returns>
+        public override string ToString()
+            => $"LimiterSampleProvider {{ CeilingDb = {CeilingDb}, ReleaseMs = {ReleaseMs}, AttackMs = {AttackMs} }}";
     }
 }
