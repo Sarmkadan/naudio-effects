@@ -138,5 +138,10 @@ namespace NAudioEffects
             // Scale back to [-1, 1] range
             return quantized * scale;
         }
+
+        /// <summary>
+        /// Returns a concise, informative representation of this provider.
+        /// </summary>
+        public override string ToString() => $"BitCrusherSampleProvider {{ BitDepth = {BitDepth}, HoldFactor = {HoldFactor}, Mix = {Mix} }}";
     }
 }
