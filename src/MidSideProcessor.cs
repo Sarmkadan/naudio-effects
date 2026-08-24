@@ -68,6 +68,8 @@ namespace NAudioEffects
         /// </summary>
         public float SideSmoothingMs { get; set; } = 10;
 
+        public override string ToString() => $"{nameof(MidSideProcessor)} {{ MidSmoothingMs = {MidSmoothingMs}, SideSmoothingMs = {SideSmoothingMs} }}";
+
         /// <summary>
         /// Initializes a new instance of the MidSideProcessor.
         /// </summary>
