@@ -92,5 +92,11 @@ namespace NAudioEffects
                 }
             }
         }
+
+        /// <summary>
+        /// Returns a concise, informative representation of this instance.
+        /// </summary>
+        public override string ToString()
+            => $"TremoloSampleProvider {{ RateHz = {RateHz}, Depth = {Depth} }}";
     }
 }
