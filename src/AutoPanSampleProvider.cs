@@ -127,6 +127,12 @@ namespace NAudioEffects
                     return (float)Math.Sin(phase); // Default to sine
             }
         }
+
+        /// <summary>
+        /// Returns a concise, informative string representation of this instance.
+        /// </summary>
+        public override string ToString()
+            => $"AutoPanSampleProvider {{ RateHz = {RateHz}, Depth = {Depth}, Waveform = {Waveform} }}";
     }
 
     /// <summary>
