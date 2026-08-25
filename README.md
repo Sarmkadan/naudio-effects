@@ -57,3 +57,30 @@ chorus.DepthMs = 2.0f;
 chorus.Mix = 0.2f;
 chorus.BaseDelayMs = 15.0f;
 ```
+
+## EnvelopeFollowerTests
+The EnvelopeFollowerTests class contains the unit tests for the EnvelopeFollower component, which implements a classic attack/release envelope detector used by dynamics effects such as compressors and gates. The tests verify correct initialization with default and custom parameters, that SetParameters recomputes the smoothing coefficients, and that the envelope rises on positive input, rectifies negative samples, decays toward zero on silence, and tracks mixed signals according to the configured attack and release times.
+
+**Usage example**
+
+```csharp
+// Instantiate the test suite and exercise its checks directly
+var tests = new EnvelopeFollowerTests();
+
+// Constructor and parameter handling
+tests.Constructor_WithDefaultParameters_InitializesCorrectly();
+tests.Constructor_WithCustomParameters_InitializesCorrectly();
+tests.SetParameters_UpdatesCoefficients();
+
+// Envelope tracking behavior
+tests.Process_WithZeroSamples_EnvelopeDecaysToZero();
+tests.Process_WithPositiveSamples_EnvelopeRises();
+tests.Process_WithNegativeSamples_EnvelopeRectifiesToPositive();
+tests.Process_WithRisingInput_EnvelopeIncreasesPerAttack();
+tests.Process_WithFallingInput_EnvelopeDecaysPerRelease();
+tests.Process_WithMixedSamples_TracksEnvelopeCorrectly();
+
+// Coefficient calculation
+tests.CalculateCoefficient_WithZeroTimeConstant_ReturnsZero();
+tests.CalculateCoefficient_WithPositiveTimeConstant_ReturnsValidCoefficient();
+```
