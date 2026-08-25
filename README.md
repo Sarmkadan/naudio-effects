@@ -84,3 +84,42 @@ tests.Process_WithMixedSamples_TracksEnvelopeCorrectly();
 tests.CalculateCoefficient_WithZeroTimeConstant_ReturnsZero();
 tests.CalculateCoefficient_WithPositiveTimeConstant_ReturnsValidCoefficient();
 ```
+
+## SilenceDetectorValidation
+The `SilenceDetectorValidation` class provides static extension methods that help you verify a `SilenceDetector` (and its nested `SilenceRegion` objects) is correctly configured. You can retrieve a list of validation problems, check validity with a boolean, or have the method throw an exception when the detector is invalid.
+
+**Usage example**
+
+## MidSideProcessorTests
+The `MidSideProcessorTests` class provides a comprehensive test suite for the `MidSideProcessor` effect, validating mid/side channel separation, independent gain control, and smoothing behavior. It verifies correct handling of mono and stereo inputs, bypass functionality, and various gain configurations to ensure accurate audio processing.
+
+**Usage example**
+```csharp
+// Instantiate the test suite and exercise its checks directly
+var tests = new MidSideProcessorTests();
+
+// Constructor validation
+tests.Constructor_WithMonoSource_ThrowsArgumentException();
+tests.Constructor_WithStereoSource_Succeeds();
+
+// Property updates
+tests.MidGainDb_WhenSet_UpdatesCurrentGain();
+tests.SideGainDb_WhenSet_UpdatesCurrentGain();
+tests.MidSmoothingMs_WhenSet_UpdatesInterval();
+tests.SideSmoothingMs_WhenSet_UpdatesInterval();
+
+// Bypass and signal processing
+tests.Bypass_WhenTrue_DoesNotProcessSamples();
+tests.MidOnlySignal_WithMidGain_AmplifiesCenter();
+tests.SideOnlySignal_WithSideGain_AmplifiesStereoImage();
+tests.StereoSignal_WithDifferentMidSideGains_ProcessesIndependently();
+tests.ZeroGains_ProducesOriginalSignal();
+tests.NegativeMidGain_ReducesCenterContent();
+tests.LargeSideGain_CreatesWideStereoImage();
+tests.Smoothing_AppliesGradualGainChange();
+
+// WaveFormat and provider access
+var format = tests.WaveFormat;
+var provider = tests.TestSampleProvider;
+var readCount = provider.Read(new float[1024], 0, 1024);
+```
