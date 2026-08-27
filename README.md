@@ -70,6 +70,18 @@ flanger.DelayMs = 0.5f;
 flanger.Mix = 0.4f;
 ```
 
+## NoiseGateSampleProvider
+The NoiseGateSampleProvider class implements a noise gate that attenuates audio below a specified threshold with smooth attack, release, and hold times. It can be used to silence quiet parts of an audio signal while preserving louder sections.
+
+**Usage example**
+```csharp
+var noiseGate = new NoiseGateSampleProvider(new SampleProvider());
+noiseGate.ThresholdDb = -20.0f;
+noiseGate.AttackMs = 10.0f;
+noiseGate.ReleaseMs = 100.0f;
+noiseGate.HoldMs = 50.0f;
+```
+
 ## EnvelopeFollowerTests
 The EnvelopeFollowerTests class contains the unit tests for the EnvelopeFollower component, which implements a classic attack/release envelope detector used by dynamics effects such as compressors and gates. The tests verify correct initialization with default and custom parameters, that SetParameters recomputes the smoothing coefficients, and that the envelope rises on positive input, rectifies negative samples, decays toward zero on silence, and tracks mixed signals according to the configured attack and release times.
 
