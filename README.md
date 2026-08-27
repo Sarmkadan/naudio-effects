@@ -82,6 +82,17 @@ noiseGate.ReleaseMs = 100.0f;
 noiseGate.HoldMs = 50.0f;
 ```
 
+## LimiterSampleProvider
+The LimiterSampleProvider class implements a limiter that prevents audio from exceeding a specified ceiling threshold with adjustable attack and release times. It can be used to prevent clipping and maintain consistent loudness.
+
+**Usage example
+```csharp
+var limiter = new LimiterSampleProvider(new SampleProvider());
+limiter.CeilingDb = -1.0f;
+limiter.AttackMs = 5.0f;
+limiter.ReleaseMs = 50.0f;
+```
+
 ## EnvelopeFollowerTests
 The EnvelopeFollowerTests class contains the unit tests for the EnvelopeFollower component, which implements a classic attack/release envelope detector used by dynamics effects such as compressors and gates. The tests verify correct initialization with default and custom parameters, that SetParameters recomputes the smoothing coefficients, and that the envelope rises on positive input, rectifies negative samples, decays toward zero on silence, and tracks mixed signals according to the configured attack and release times.
 
