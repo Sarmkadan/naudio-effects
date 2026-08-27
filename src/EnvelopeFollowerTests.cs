@@ -2,8 +2,14 @@ using Xunit;
 
 namespace NAudioEffects;
 
+/// <summary>
+/// Test class for EnvelopeFollower.
+/// </summary>
 public class EnvelopeFollowerTests
 {
+    /// <summary>
+    /// Tests that the constructor with default parameters initializes the envelope to zero.
+    /// </summary>
     [Fact]
     public void Constructor_WithDefaultParameters_InitializesCorrectly()
     {
@@ -14,6 +20,9 @@ public class EnvelopeFollowerTests
         Assert.Equal(0f, follower.Envelope);
     }
 
+    /// <summary>
+    /// Tests that the constructor with custom attack, release, and sample rate parameters initializes correctly (envelope still zero).
+    /// </summary>
     [Fact]
     public void Constructor_WithCustomParameters_InitializesCorrectly()
     {
@@ -24,6 +33,9 @@ public class EnvelopeFollowerTests
         Assert.Equal(0f, follower.Envelope);
     }
 
+    /// <summary>
+    /// Tests that SetParameters updates the internal attack and release coefficients.
+    /// </summary>
     [Fact]
     public void SetParameters_UpdatesCoefficients()
     {
@@ -43,6 +55,9 @@ public class EnvelopeFollowerTests
         Assert.NotEqual(initialRelease, newRelease);
     }
 
+    /// <summary>
+    /// Tests that processing zero samples causes the envelope to decay to near zero.
+    /// </summary>
     [Fact]
     public void Process_WithZeroSamples_EnvelopeDecaysToZero()
     {
@@ -57,6 +72,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope < 0.001f);
     }
 
+    /// <summary>
+    /// Tests that processing positive samples causes the envelope to rise toward the sample amplitude.
+    /// </summary>
     [Fact]
     public void Process_WithPositiveSamples_EnvelopeRises()
     {
@@ -78,6 +96,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope < 0.6f);
     }
 
+    /// <summary>
+    /// Tests that processing negative samples causes the envelope to rectify to positive amplitude.
+    /// </summary>
     [Fact]
     public void Process_WithNegativeSamples_EnvelopeRectifiesToPositive()
     {
@@ -99,6 +120,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope < 0.35f);
     }
 
+    /// <summary>
+    /// Tests that processing a rising input (low to high amplitude) causes the envelope to increase according to attack time.
+    /// </summary>
     [Fact]
     public void Process_WithRisingInput_EnvelopeIncreasesPerAttack()
     {
@@ -125,6 +149,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope > 0.3f);
     }
 
+    /// <summary>
+    /// Tests that processing a falling input (high to zero amplitude) causes the envelope to decay according to release time.
+    /// </summary>
     [Fact]
     public void Process_WithFallingInput_EnvelopeDecaysPerRelease()
     {
@@ -149,6 +176,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope > 0.01f);
     }
 
+    /// <summary>
+    /// Tests that processing mixed samples (sine wave) causes the envelope to track the absolute value of the signal.
+    /// </summary>
     [Fact]
     public void Process_WithMixedSamples_TracksEnvelopeCorrectly()
     {
@@ -170,6 +200,9 @@ public class EnvelopeFollowerTests
         Assert.True(follower.Envelope < 0.6f);
     }
 
+    /// <summary>
+    /// Tests that CalculateCoefficient returns zero when given a zero time constant.
+    /// </summary>
     [Fact]
     public void CalculateCoefficient_WithZeroTimeConstant_ReturnsZero()
     {
@@ -183,6 +216,9 @@ public class EnvelopeFollowerTests
         Assert.Equal(0f, result);
     }
 
+    /// <summary>
+    /// Tests that CalculateCoefficient returns a valid coefficient between 0 and 1 for a positive time constant.
+    /// </summary>
     [Fact]
     public void CalculateCoefficient_WithPositiveTimeConstant_ReturnsValidCoefficient()
     {
