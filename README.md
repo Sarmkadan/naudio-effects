@@ -58,7 +58,7 @@ chorus.BaseDelayMs = 15.0f;
 ```
 
 ## FlangerSampleProvider
-The FlangerSampleProvider class applies a flanger effect to an audio stream. It creates a sweeping, whooshing sound by mixing the input with a delayed, phase-modulated copy of itself. You can adjust the RateHz, DepthMs, Feedback, DelayMs, and Mix properties to fine-tune the flanger effect.
+The FlangerSampleProvider class applies a flanger effect to an audio stream by mixing the input with a delayed, phase-modulated copy of itself. The delay time is modulated by a low-frequency oscillator (LFO) to create the characteristic sweeping sound. You can adjust the LFO rate (RateHz), modulation depth (DepthMs), feedback amount (Feedback), base delay time (DelayMs), and wet/dry mix (Mix) to fine-tune the effect.
 
 **Usage example**
 ```csharp
