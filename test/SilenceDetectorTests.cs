@@ -4,6 +4,9 @@ using NAudioEffects;
 
 namespace NAudioEffects.Tests
 {
+    /// <summary>
+    /// Tests for the <see cref="SilenceDetector"/> class.
+    /// </summary>
     public class SilenceDetectorTests
     {
         private const int SampleRate = 44100;
@@ -28,6 +31,9 @@ namespace NAudioEffects.Tests
             return buffer;
         }
 
+        /// <summary>
+        /// Verifies that pure silence (zero amplitude) is detected as a single silent region.
+        /// </summary>
         [Fact]
         public void PureSilence_IsDetected()
         {
@@ -43,6 +49,9 @@ namespace NAudioEffects.Tests
             Assert.Equal(TimeSpan.FromSeconds(1), region.End);
         }
 
+        /// <summary>
+        /// Verifies that a signal above the silence threshold is not detected as silence.
+        /// </summary>
         [Fact]
         public void SignalAboveThreshold_IsNotDetected()
         {
@@ -55,6 +64,9 @@ namespace NAudioEffects.Tests
             Assert.Empty(detector.Regions);
         }
 
+        /// <summary>
+        /// Verifies that the behavior at the silence threshold: exactly at threshold is not silence, just below is silence.
+        /// </summary>
         [Fact]
         public void ThresholdBoundary_Behavior()
         {
@@ -76,6 +88,9 @@ namespace NAudioEffects.Tests
             Assert.Single(detector.Regions);
         }
 
+        /// <summary>
+        /// Verifies that silence shorter than the minimum duration is ignored.
+        /// </summary>
         [Fact]
         public void ShortSilenceBelowMinimumDuration_IsIgnored()
         {
