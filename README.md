@@ -19,7 +19,6 @@ Extension methods for `CompressorSampleProvider` give a fluent, immutable‑styl
 Extension methods for `SilenceDetector` that provide convenient querying and analysis of detected silence regions. These methods allow you to quickly determine if silence was detected, count regions, calculate durations (total, average, longest, shortest), and check if the entire audio is silence.
 
 **Usage example**
-
 ```csharp
 // Create a silence detector with a threshold of -40dB
 var silenceDetector = new SilenceDetector(
@@ -56,6 +55,19 @@ chorus.RateHz = 0.5f;
 chorus.DepthMs = 2.0f;
 chorus.Mix = 0.2f;
 chorus.BaseDelayMs = 15.0f;
+```
+
+## FlangerSampleProvider
+The FlangerSampleProvider class applies a flanger effect to an audio stream. It creates a sweeping, whooshing sound by mixing the input with a delayed, phase-modulated copy of itself. You can adjust the RateHz, DepthMs, Feedback, DelayMs, and Mix properties to fine-tune the flanger effect.
+
+**Usage example**
+```csharp
+var flanger = new FlangerSampleProvider(new SampleProvider());
+flanger.RateHz = 0.2f;
+flanger.DepthMs = 1.5f;
+flanger.Feedback = 0.3f;
+flanger.DelayMs = 0.5f;
+flanger.Mix = 0.4f;
 ```
 
 ## EnvelopeFollowerTests
