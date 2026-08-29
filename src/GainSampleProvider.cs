@@ -48,30 +48,6 @@ public class GainSampleProvider : EffectSampleProviderBase
     public float SmoothingMs { get; set; } = 10;
 
     /// <summary>
-    /// Converts decibels to linear gain.
-    /// </summary>
-    /// <param name="db">Decibels value.</param>
-    /// <returns>Linear gain value.</returns>
-    public static new float DbToLinear(float db)
-    {
-        return MathF.Pow(10.0f, db / 20.0f);
-    }
-
-    /// <summary>
-    /// Converts linear gain to decibels.
-    /// </summary>
-    /// <param name="linear">Linear gain value.</param>
-    /// <returns>Decibels value.</returns>
-    public static new float LinearToDb(float linear)
-    {
-        if (linear <= 0f)
-        {
-            return float.NegativeInfinity;
-        }
-        return 20.0f * MathF.Log10(linear);
-    }
-
-    /// <summary>
     /// Processes a block of samples with gain adjustment.
     /// </summary>
     /// <param name="buffer">The buffer containing the samples.</param>

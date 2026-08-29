@@ -67,9 +67,9 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="db">The decibel value (dB), typically relative to digital full scale (dBFS).</param>
         /// <returns>The linear amplitude, where 1 corresponds to 0 dB.</returns>
-        protected static float DbToLinear(float db)
+        public static float DbToLinear(float db)
         {
-            return (float)Math.Pow(10.0, db / 20.0);
+            return MathF.Pow(10.0f, db / 20.0f);
         }
 
         /// <summary>
@@ -77,14 +77,14 @@ namespace NAudioEffects
         /// </summary>
         /// <param name="linear">The linear amplitude, where 1 corresponds to 0 dB.</param>
         /// <returns>The decibel value (dB); returns <see cref="float.NegativeInfinity"/> for non-positive input.</returns>
-        protected static float LinearToDb(float linear)
+        public static float LinearToDb(float linear)
         {
             if (linear <= 0f)
             {
                 // Avoid log of zero or negative values.
                 return float.NegativeInfinity;
             }
-            return 20.0f * (float)Math.Log10(linear);
+            return 20.0f * MathF.Log10(linear);
         }
     }
 }
