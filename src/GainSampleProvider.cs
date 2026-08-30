@@ -7,6 +7,11 @@ namespace NAudioEffects;
 /// </summary>
 public class GainSampleProvider : EffectSampleProviderBase
 {
+    private const float DefaultSmoothingMs = 10.0f;
+    private const float MillisecondsPerSecond = 1000.0f;
+    private const float DbPerDecade = 20.0f;
+    private const float LinearGainBase = 10.0f;
+
     private float _currentGainLinear = 1.0f;
     private float _targetGainLinear = 1.0f;
     private float _samplesPerMs;
@@ -20,8 +25,8 @@ public class GainSampleProvider : EffectSampleProviderBase
     public GainSampleProvider(ISampleProvider source)
         : base(source)
     {
-        _samplesPerMs = WaveFormat.SampleRate / 1000.0f;
-        SmoothingMs = 10;
+        _samplesPerMs = WaveFormat.SampleRate / MillisecondsPerSecond;
+        SmoothingMs = DefaultSmoothingMs;
     }
 
     /// <summary>
@@ -29,10 +34,10 @@ public class GainSampleProvider : EffectSampleProviderBase
     /// </summary>
     public float GainDb
     {
-        get => LinearToDb(_currentGainLinear);
+        get => GainLinearToDb(_currentGainLinear);
         set
         {
-            var newGainLinear = DbToLinear(value);
+            var newGainLinear = GainDbToLinear(value);
             if (Math.Abs(_targetGainLinear - newGainLinear) > float.Epsilon)
             {
                 _targetGainLinear = newGainLinear;
@@ -45,7 +50,7 @@ public class GainSampleProvider : EffectSampleProviderBase
     /// <summary>
     /// Gets or sets the smoothing time in milliseconds.
     /// </summary>
-    public float SmoothingMs { get; set; } = 10;
+    public float SmoothingMs { get; set; } = DefaultSmoothingMs;
 
     /// <summary>
     /// Processes a block of samples with gain adjustment.
@@ -57,7 +62,7 @@ public class GainSampleProvider : EffectSampleProviderBase
     {
         // If smoothing is set to 0 (instant gain change), use a short default ramp (~10 ms)
         // to avoid clicks. This mirrors the default smoothing behavior.
-        float rampMs = SmoothingMs > 0 ? SmoothingMs : 10f;
+        float rampMs = SmoothingMs > 0 ? SmoothingMs : DefaultSmoothingMs;
         _updateInterval = (int)(rampMs * _samplesPerMs);
         if (_updateInterval < 1)
         {
@@ -84,5 +89,20 @@ public class GainSampleProvider : EffectSampleProviderBase
             }
             _samplesUntilNextUpdate = _updateInterval - (samplesRead % _updateInterval);
         }
+    }
+
+    private static float GainDbToLinear(float db)
+    {
+        return MathF.Pow(LinearGainBase, db / DbPerDecade);
+    }
+
+    private static float GainLinearToDb(float linear)
+    {
+        if (linear <= 0)
+        {
+            return float.NegativeInfinity;
+        }
+
+        return DbPerDecade * MathF.Log10(linear);
     }
 }
