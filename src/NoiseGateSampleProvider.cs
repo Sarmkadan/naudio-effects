@@ -10,29 +10,81 @@ namespace NAudioEffects
     {
         private readonly EnvelopeFollower _envelopeFollower;
         private readonly int _sampleRate;
+        private float _thresholdDb = -30.0f;
+        private float _attackMs = 5.0f;
+        private float _releaseMs = 50.0f;
+        private float _holdMs = 50.0f;
         private float _currentGain = 1.0f;
         private float _targetGain = 1.0f;
         private int _holdCounter = 0;
 
         /// <summary>
-        /// Gets or sets the threshold in decibels.
+        /// Gets or sets the threshold in decibels. The value must not be <see cref="float.NaN"/>.
         /// </summary>
-        public float ThresholdDb { get; set; } = -30.0f;
+        public float ThresholdDb
+        {
+            get => _thresholdDb;
+            set
+            {
+                if (float.IsNaN(value))
+                {
+                    throw new ArgumentException("Threshold must not be NaN.", nameof(ThresholdDb));
+                }
+
+                _thresholdDb = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the attack time in milliseconds.
+        /// Gets or sets the attack time in milliseconds. The value must be finite and greater than or equal to zero.
         /// </summary>
-        public float AttackMs { get; set; } = 5.0f;
+        public float AttackMs
+        {
+            get => _attackMs;
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(AttackMs), "Attack time must be finite and greater than or equal to zero.");
+                }
+
+                _attackMs = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the release time in milliseconds.
+        /// Gets or sets the release time in milliseconds. The value must be finite and greater than or equal to zero.
         /// </summary>
-        public float ReleaseMs { get; set; } = 50.0f;
+        public float ReleaseMs
+        {
+            get => _releaseMs;
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(ReleaseMs), "Release time must be finite and greater than or equal to zero.");
+                }
+
+                _releaseMs = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the hold time in milliseconds.
+        /// Gets or sets the hold time in milliseconds. The value must be finite and greater than or equal to zero.
         /// </summary>
-        public float HoldMs { get; set; } = 50.0f;
+        public float HoldMs
+        {
+            get => _holdMs;
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(HoldMs), "Hold time must be finite and greater than or equal to zero.");
+                }
+
+                _holdMs = value;
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the NoiseGateSampleProvider.
@@ -41,6 +93,11 @@ namespace NAudioEffects
         public NoiseGateSampleProvider(ISampleProvider source) : base(source)
         {
             _sampleRate = source.WaveFormat.SampleRate;
+            if (_sampleRate <= 0)
+            {
+                throw new ArgumentException("Source sample rate must be greater than zero.", nameof(source));
+            }
+
             _envelopeFollower = new EnvelopeFollower();
         }
 
