@@ -14,7 +14,7 @@ namespace NAudioEffects
         // Comb filter delays in samples (at 44.1kHz)
         private static readonly int[] CombDelays = { 1116, 1356, 1691, 1916 };
 
-        // Allpass filter delays in samples
+        // Allpass filter delays in samples (at 44.1kHz)
         private static readonly int[] AllpassDelays = { 225, 556 };
 
         // Allpass feedback coefficients
@@ -22,6 +22,8 @@ namespace NAudioEffects
 
         private readonly float[][] _combBuffers;  // One per comb filter per channel
         private readonly float[][] _allpassBuffers; // One per allpass filter per channel
+        private readonly int[] _combDelayLengths;
+        private readonly int[] _allpassDelayLengths;
         private readonly int[] _combIndices;      // Current write position for each comb
         private readonly int[] _allpassIndices;    // Current write position for each allpass
 
@@ -73,32 +75,32 @@ namespace NAudioEffects
         public ReverbSampleProvider(ISampleProvider source)
             : base(source)
         {
-            int channels = source.WaveFormat.Channels;
             int sampleRate = source.WaveFormat.SampleRate;
+            double sampleRateScale = sampleRate / 44100.0;
 
-            // Calculate delay times based on room size and sample rate
             _combBuffers = new float[CombDelays.Length][];
+            _combDelayLengths = new int[CombDelays.Length];
             _combIndices = new int[CombDelays.Length];
 
             for (int i = 0; i < CombDelays.Length; i++)
             {
-                // Scale delay times based on room size and sample rate
-                int baseDelay = (int)(CombDelays[i] * (0.5f + 0.5f * RoomSize));
-                int scaledDelay = (int)(baseDelay * (44100.0f / sampleRate));
+                int scaledDelay = Math.Max(1, (int)Math.Round(CombDelays[i] * sampleRateScale));
 
+                _combDelayLengths[i] = scaledDelay;
                 _combBuffers[i] = new float[scaledDelay];
                 _combIndices[i] = 0;
             }
 
             // Allpass filters
             _allpassBuffers = new float[AllpassDelays.Length][];
+            _allpassDelayLengths = new int[AllpassDelays.Length];
             _allpassIndices = new int[AllpassDelays.Length];
 
             for (int i = 0; i < AllpassDelays.Length; i++)
             {
-                int baseDelay = (int)(AllpassDelays[i] * (0.5f + 0.5f * RoomSize));
-                int scaledDelay = (int)(baseDelay * (44100.0f / sampleRate));
+                int scaledDelay = Math.Max(1, (int)Math.Round(AllpassDelays[i] * sampleRateScale));
 
+                _allpassDelayLengths[i] = scaledDelay;
                 _allpassBuffers[i] = new float[scaledDelay];
                 _allpassIndices[i] = 0;
             }
@@ -136,7 +138,7 @@ namespace NAudioEffects
                 for (int s = 0; s < samplesRead; s++)
                 {
                     int sampleIndex = offset + s;
-                    int readIndex = (combIndex - CombDelays[i] + combBuffer.Length) % combBuffer.Length;
+                    int readIndex = (combIndex - _combDelayLengths[i] + combBuffer.Length) % combBuffer.Length;
 
                     // Read from circular buffer
                     float input = buffer[sampleIndex + channelIndex] * 0.25f; // Normalize to avoid clipping
@@ -164,7 +166,7 @@ namespace NAudioEffects
                 for (int s = 0; s < samplesRead; s++)
                 {
                     int sampleIndex = offset + s;
-                    int readIndex = (allpassIndex - AllpassDelays[i] + allpassBuffer.Length) % allpassBuffer.Length;
+                    int readIndex = (allpassIndex - _allpassDelayLengths[i] + allpassBuffer.Length) % allpassBuffer.Length;
 
                     // Read from circular buffer
                     float input = allpassIn[s];
