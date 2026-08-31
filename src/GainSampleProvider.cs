@@ -15,8 +15,7 @@ public class GainSampleProvider : EffectSampleProviderBase
     private float _currentGainLinear = 1.0f;
     private float _targetGainLinear = 1.0f;
     private float _samplesPerMs;
-    private int _samplesUntilNextUpdate;
-    private int _updateInterval;
+    private int _samplesRemainingInRamp;
 
     /// <summary>
     /// Initializes a new instance of the GainSampleProvider.
@@ -41,8 +40,7 @@ public class GainSampleProvider : EffectSampleProviderBase
             if (Math.Abs(_targetGainLinear - newGainLinear) > float.Epsilon)
             {
                 _targetGainLinear = newGainLinear;
-                // Ensure a smoothing period is scheduled even if SmoothingMs is zero.
-                _samplesUntilNextUpdate = _updateInterval;
+                _samplesRemainingInRamp = -1;
             }
         }
     }
@@ -63,31 +61,37 @@ public class GainSampleProvider : EffectSampleProviderBase
         // If smoothing is set to 0 (instant gain change), use a short default ramp (~10 ms)
         // to avoid clicks. This mirrors the default smoothing behavior.
         float rampMs = SmoothingMs > 0 ? SmoothingMs : DefaultSmoothingMs;
-        _updateInterval = (int)(rampMs * _samplesPerMs);
-        if (_updateInterval < 1)
+        int updateInterval = (int)(rampMs * _samplesPerMs);
+        if (updateInterval < 1)
         {
-            _updateInterval = 1;
+            updateInterval = 1;
         }
 
-        if (_samplesUntilNextUpdate > 0)
+        if (_samplesRemainingInRamp < 0)
         {
-            // Apply current gain during smoothing period
-            for (int i = 0; i < samplesRead; i++)
-            {
-                buffer[offset + i] *= _currentGainLinear;
-            }
-            _samplesUntilNextUpdate -= samplesRead;
+            _samplesRemainingInRamp = updateInterval;
         }
-        else
+
+        float step = _samplesRemainingInRamp > 0
+            ? (_targetGainLinear - _currentGainLinear) / _samplesRemainingInRamp
+            : 0;
+        for (int i = 0; i < samplesRead; i++)
         {
-            // Update gain smoothly
-            float step = (_targetGainLinear - _currentGainLinear) / _updateInterval;
-            for (int i = 0; i < samplesRead; i++)
+            if (step > 0)
             {
-                _currentGainLinear += step;
-                buffer[offset + i] *= _currentGainLinear;
+                _currentGainLinear = Math.Min(_currentGainLinear + step, _targetGainLinear);
             }
-            _samplesUntilNextUpdate = _updateInterval - (samplesRead % _updateInterval);
+            else if (step < 0)
+            {
+                _currentGainLinear = Math.Max(_currentGainLinear + step, _targetGainLinear);
+            }
+
+            if (_samplesRemainingInRamp > 0)
+            {
+                _samplesRemainingInRamp--;
+            }
+
+            buffer[offset + i] *= _currentGainLinear;
         }
     }
 
