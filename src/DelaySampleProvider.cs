@@ -16,6 +16,7 @@ namespace NAudioEffects
 
         private readonly float[][] _delayLines;
         private readonly int[] _writePositions;
+        private readonly int[] _masks;
         private readonly float _maxDelayMs;
         private readonly float _samplesPerMillisecond;
         private float _delayMs;
@@ -59,13 +60,20 @@ namespace NAudioEffects
 
             _maxDelayMs = maxDelayMs;
             _samplesPerMillisecond = sampleRate / 1000f;
+            
+            // Round up to next power of two for efficient bitwise masking
             int delayLineLength = Math.Max(1, (int)maximumDelaySamples + 1);
+            int capacity = 1;
+            while (capacity < delayLineLength) capacity <<= 1;
+
             _delayLines = new float[channels][];
             _writePositions = new int[channels];
+            _masks = new int[channels];
 
             for (int channel = 0; channel < channels; channel++)
             {
-                _delayLines[channel] = new float[delayLineLength];
+                _delayLines[channel] = new float[capacity];
+                _masks[channel] = capacity - 1;
             }
         }
 
@@ -127,17 +135,12 @@ namespace NAudioEffects
                 }
                 else
                 {
-                    int readPosition = writePosition - delaySamples;
-                    if (readPosition < 0)
-                    {
-                        readPosition += delayLine.Length;
-                    }
-
+                    int readPosition = (writePosition - delaySamples) & _masks[channel];
                     delayed = delayLine[readPosition];
                 }
 
-                delayLine[writePosition] = input + (delayed * _feedback);
-                _writePositions[channel] = (writePosition + 1) % delayLine.Length;
+                delayLine[writePosition & _masks[channel]] = input + (delayed * _feedback);
+                _writePositions[channel] = (writePosition + 1) & _masks[channel];
                 buffer[offset + sample] = (input * dryMix) + (delayed * _mix);
             }
         }
