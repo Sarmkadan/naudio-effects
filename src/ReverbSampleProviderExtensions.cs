@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NAudio.Wave;
 
 namespace NAudioEffects
 {
@@ -27,16 +28,19 @@ namespace NAudioEffects
             if (destination == null) throw new ArgumentNullException(nameof(destination));
 
             var reverb = new ReverbSampleProvider(source);
-            var buffer = new float[4096];
+            var floatBuffer = new float[4096];
+            var byteBuffer = new byte[4096 * 4]; // 4 bytes per float
             int samplesRead;
 
             progress?.Report(0f);
 
-            while ((samplesRead = reverb.Read(buffer, 0, buffer.Length)) > 0)
+            while ((samplesRead = reverb.Read(floatBuffer, 0, floatBuffer.Length)) > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
-                await destination.WriteAsync(buffer.AsMemory(0, samplesRead), cancellationToken).ConfigureAwait(false);
+
+                // Convert float samples to bytes (little-endian IEEE 754)
+                Buffer.BlockCopy(floatBuffer, 0, byteBuffer, 0, samplesRead * 4);
+                await destination.WriteAsync(byteBuffer, 0, samplesRead * 4, cancellationToken).ConfigureAwait(false);
             }
 
             progress?.Report(1f);
