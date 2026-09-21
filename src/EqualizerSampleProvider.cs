@@ -1,5 +1,6 @@
 using NAudio.Dsp;
 using NAudio.Wave;
+using System.Threading;
 
 namespace NAudioEffects;
 
@@ -101,8 +102,18 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
     /// </summary>
     private void UpdateAllFilters()
     {
+        UpdateAllFilters(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Rebuilds all <see cref="BiQuadFilter"/> instances based on the current gains, checking for cancellation.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token to check.</param>
+    private void UpdateAllFilters(CancellationToken cancellationToken)
+    {
         for (int i = 0; i < _bandCount; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             float frequency = GetBandFrequency(i);
             float gainDb = _gainsDb[i];
 
@@ -153,5 +164,40 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
 
             buffer[offset + n] = sample;
         }
+    }
+
+    /// <summary>
+    /// Reads a block of samples, supporting cancellation.
+    /// </summary>
+    /// <param name="buffer">The buffer to read into.</param>
+    /// <param name="offset">The offset into the buffer.</param>
+    /// <param name="count">The number of samples to read.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The number of samples read.</returns>
+    public int Read(float[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        const int blockSize = 256;
+        int processed = 0;
+        while (processed < count)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int blockSizeToProcess = Math.Min(blockSize, count - processed);
+            int samplesRead = _source.Read(buffer, offset + processed, blockSizeToProcess);
+            if (samplesRead == 0)
+                break;
+
+            if (!Bypass && samplesRead > 0)
+            {
+                // Update filters if needed, with cancellation
+                if (_filtersDirty)
+                {
+                    UpdateAllFilters(cancellationToken);
+                    _filtersDirty = false;
+                }
+                ProcessBlock(buffer, offset + processed, samplesRead);
+            }
+            processed += samplesRead;
+        }
+        return processed;
     }
 }

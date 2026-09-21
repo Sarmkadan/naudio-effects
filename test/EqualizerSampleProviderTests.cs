@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using NAudio.Wave;
 using NAudioEffects;
 using Xunit;
@@ -170,6 +172,69 @@ namespace NAudioEffects.Tests
             Assert.Equal(1024, read);
             // Just verify it doesn't throw and produces some output
             Assert.NotEqual(0f, buffer[0]); // Should have processed the signal
+        }
+
+        [Fact]
+        public void Read_ThrowsOperationCanceledException_WhenCancellationRequested()
+        {
+            // Arrange: Create a provider with a large buffer to allow time for cancellation
+            float[] sourceData = new float[100000]; // Large buffer
+            for (int i = 0; i < sourceData.Length; i++)
+                sourceData[i] = (float)Math.Sin(i * 0.1);
+
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
+            provider.SetBandGain(0, 3.0f); // Set some gain to make processing non-trivial
+
+            // Use a cancellation token source
+            using var cts = new CancellationTokenSource();
+
+            // Act & Assert: Cancel immediately and verify exception is thrown
+            cts.Cancel();
+            Assert.Throws<OperationCanceledException>(() =>
+                provider.Read(new float[1000], 0, 1000, cts.Token));
+        }
+
+        [Fact]
+        public void Read_StateNotCorrupted_AfterCancellation()
+        {
+            // Arrange: Create a provider with a large buffer
+            float[] sourceData = new float[100000]; // Large buffer
+            for (int i = 0; i < sourceData.Length; i++)
+                sourceData[i] = (float)Math.Sin(i * 0.1);
+
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
+            provider.SetBandGain(0, 3.0f); // Set some gain
+
+            // Use a cancellation token source
+            using var cts = new CancellationTokenSource();
+
+            // Cancel after reading some data (but not all)
+            var readTask = Task.Run(() =>
+            {
+                try
+                {
+                    return provider.Read(new float[50000], 0, 50000, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected
+                    return -1;
+                }
+            });
+
+            // Cancel quickly
+            cts.CancelAfter(10); // Cancel after 10 milliseconds
+
+            // Act
+            int result = readTask.Result;
+
+            // Assert: Operation was canceled
+            Assert.Equal(-1, result);
+
+            // Further assert: Provider can still be used normally after cancellation
+            float[] buffer = new float[1000];
+            int read = provider.Read(buffer, 0, buffer.Length, CancellationToken.None);
+            Assert.Equal(1000, read); // Should read successfully
         }
     }
 }
