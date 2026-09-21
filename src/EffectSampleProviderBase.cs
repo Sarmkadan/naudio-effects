@@ -10,7 +10,7 @@ namespace NAudioEffects
     /// </summary>
     public abstract class EffectSampleProviderBase : ISampleProvider
     {
-        private readonly ISampleProvider _source;
+        protected readonly ISampleProvider _source;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EffectSampleProviderBase"/> class.
