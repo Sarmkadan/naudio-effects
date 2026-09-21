@@ -1,0 +1,24 @@
+{
+  "NoiseGate": {
+    "ThresholdDb": -38.0,
+    "AttackMs": 10.0,
+    "ReleaseMs": 120.0,
+    "HoldMs": 30.0
+  },
+  "Equalizer": {
+    "BandCount": 3,
+    "BandGains": [ -2.0, 4.0, 2.5 ]
+  },
+  "Compressor": {
+    "ThresholdDb": -22.0,
+    "Ratio": 2.5,
+    "AttackMs": 20.0,
+    "ReleaseMs": 200.0,
+    "MakeupGainDb": 2.0
+  },
+  "Limiter": {
+    "CeilingDb": -0.2,
+    "AttackMs": 1.0,
+    "ReleaseMs": 60.0
+  }
+}
