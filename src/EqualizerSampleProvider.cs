@@ -57,6 +57,12 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
             throw new ArgumentOutOfRangeException(nameof(band), $"Band must be between 0 and {_bandCount - 1}");
         }
 
+        // Validate gain is within a sane range (-24 dB to +24 dB)
+        if (gainDb < -24f || gainDb > 24f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(gainDb), $"Gain must be between -24 dB and +24 dB. Actual value: {gainDb} dB");
+        }
+
         _gainsDb[band] = gainDb;
         // Defer rebuilding the filter until the next processing pass.
         _filtersDirty = true;
@@ -72,6 +78,12 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         if (band < 0 || band >= _bandCount)
         {
             throw new ArgumentOutOfRangeException(nameof(band), $"Band must be between 0 and {_bandCount - 1}");
+        }
+
+        // Handle single band case to avoid division by zero
+        if (_bandCount == 1)
+        {
+            return 60.0f; // Default frequency for single band
         }
 
         // Logarithmically spaced bands from 60Hz to 12kHz
@@ -93,7 +105,22 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         {
             float frequency = GetBandFrequency(i);
             float gainDb = _gainsDb[i];
-            _filters[i] = BiQuadFilter.PeakingEQ(WaveFormat.SampleRate, frequency, 1.0f, gainDb);
+
+            // Validate frequency is in the valid range (0, sampleRate/2)
+            if (frequency <= 0f || frequency >= WaveFormat.SampleRate / 2f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(frequency),
+                    $"Frequency {frequency}Hz is not in the valid range (0, {WaveFormat.SampleRate/2}Hz) for band {i}.");
+            }
+
+            // Validate Q factor (fixed at 1.0f, but validate for completeness)
+            const float q = 1.0f;
+            if (q <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(q), $"Q factor must be greater than zero. Actual value: {q}");
+            }
+
+            _filters[i] = BiQuadFilter.PeakingEQ(WaveFormat.SampleRate, frequency, q, gainDb);
         }
     }
 

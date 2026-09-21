@@ -57,5 +57,119 @@ namespace NAudioEffects.Tests
             Assert.Equal(readA, readB);
             Assert.Equal(bufferA, bufferB);
         }
+
+        [Fact]
+        public void Constructor_ThrowsArgumentNullException_WhenSourceIsNull()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new EqualizerSampleProvider(null!));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsArgumentOutOfRangeException_WhenBandCountIsZero()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 0));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsArgumentOutOfRangeException_WhenBandCountIsNegative()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(new TestSampleProvider(new float[10]), -1));
+        }
+
+        [Fact]
+        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenBandIndexIsNegative()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(-1, 0f));
+        }
+
+        [Fact]
+        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenBandIndexIsTooLarge()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(5, 0f));
+        }
+
+        [Fact]
+        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenGainIsTooLow()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(0, -25f));
+        }
+
+        [Fact]
+        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenGainIsTooHigh()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(0, 25f));
+        }
+
+        [Fact]
+        public void GetBandFrequency_ThrowsArgumentOutOfRangeException_WhenBandIndexIsNegative()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.GetBandFrequency(-1));
+        }
+
+        [Fact]
+        public void GetBandFrequency_ThrowsArgumentOutOfRangeException_WhenBandIndexIsTooLarge()
+        {
+            // Arrange
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.GetBandFrequency(5));
+        }
+
+        [Fact]
+        public void ProcessBlock_ThrowsArgumentOutOfRangeException_WhenFrequencyIsInvalid()
+        {
+            // Arrange: Create a provider with a sample rate that will make our test frequency invalid
+            // We'll use a very low sample rate so that even our lowest band frequency (60Hz) is >= sampleRate/2
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10], sampleRate: 100), 5);
+            // With sampleRate=100, sampleRate/2=50Hz. Our lowest band frequency is 60Hz, which is >= 50Hz, so invalid
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => provider.Read(new float[10], 0, 10));
+        }
+
+        [Fact]
+        public void ProcessBlock_WorksCorrectly_WithSingleBand()
+        {
+            // Arrange: Test edge case of single band to avoid division by zero
+            float[] sourceData = new float[1024];
+            for (int i = 0; i < sourceData.Length; i++)
+                sourceData[i] = (i % 2 == 0) ? 0.1f : -0.1f;
+
+            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 1);
+            provider.SetBandGain(0, 3.0f); // Set some gain
+
+            // Act
+            float[] buffer = new float[1024];
+            int read = provider.Read(buffer, 0, buffer.Length);
+
+            // Assert
+            Assert.Equal(1024, read);
+            // Just verify it doesn't throw and produces some output
+            Assert.NotEqual(0f, buffer[0]); // Should have processed the signal
+        }
     }
 }
