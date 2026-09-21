@@ -95,5 +95,138 @@ namespace NAudioEffects.Tests
             Assert.Equal(0f, progressValues[0]);
             Assert.Equal(1f, progressValues[1]);
         }
+
+        [Fact]
+        public void Create_ReturnsBuilder()
+        {
+            var builder = ReverbSampleProvider.Create();
+            Assert.NotNull(builder);
+            Assert.IsType<ReverbSampleProvider.ReverbBuilder>(builder);
+        }
+
+        [Fact]
+        public void Builder_DefaultValues()
+        {
+            var builder = ReverbSampleProvider.Create();
+
+            // Access via reflection or by building and checking properties
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.5f, reverb.RoomSize);
+            Assert.Equal(0.5f, reverb.Damping);
+            Assert.Equal(0.33f, reverb.WetLevel);
+            Assert.Equal(0.67f, reverb.DryLevel);
+            Assert.Equal(0.0f, reverb.PreDelaySeconds);
+        }
+
+        [Fact]
+        public void Builder_WithRoomSize_SetsValue()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithRoomSize(0.8f);
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.8f, reverb.RoomSize);
+        }
+
+        [Fact]
+        public void Builder_WithRoomSize_ClampsValues()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithRoomSize(1.5f); // Should clamp to 1.0
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(1.0f, reverb.RoomSize);
+
+            builder.WithRoomSize(-0.5f); // Should clamp to 0.0
+            reverb = builder.Build(source);
+
+            Assert.Equal(0.0f, reverb.RoomSize);
+        }
+
+        [Fact]
+        public void Builder_WithDamping_SetsValue()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithDamping(0.2f);
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.2f, reverb.Damping);
+        }
+
+        [Fact]
+        public void Builder_WithWetDryMix_SetsValue()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithWetDryMix(0.7f);
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.7f, reverb.WetLevel);
+        }
+
+        [Fact]
+        public void Builder_WithPreDelay_SetsValue()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithPreDelay(0.1f);
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.1f, reverb.PreDelaySeconds);
+        }
+
+        [Fact]
+        public void Builder_WithPreDelay_ClampsValues()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithPreDelay(3.0f); // Should clamp to 2.0
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(2.0f, reverb.PreDelaySeconds);
+
+            builder.WithPreDelay(-0.5f); // Should clamp to 0.0
+            reverb = builder.Build(source);
+
+            Assert.Equal(0.0f, reverb.PreDelaySeconds);
+        }
+
+        [Fact]
+        public void Builder_Build_Throws_OnNullSource()
+        {
+            var builder = ReverbSampleProvider.Create();
+
+            Assert.Throws<ArgumentNullException>(() => builder.Build(null));
+        }
+
+        [Fact]
+        public void Builder_ChainedMethods_AllApply()
+        {
+            var builder = ReverbSampleProvider.Create()
+                .WithRoomSize(0.9f)
+                .WithDamping(0.1f)
+                .WithWetDryMix(0.8f)
+                .WithPreDelay(0.2f);
+
+            var source = new ConstantSampleProvider();
+            var reverb = builder.Build(source);
+
+            Assert.Equal(0.9f, reverb.RoomSize);
+            Assert.Equal(0.1f, reverb.Damping);
+            Assert.Equal(0.8f, reverb.WetLevel);
+            Assert.Equal(0.67f, reverb.DryLevel); // Default dry level unchanged
+            Assert.Equal(0.2f, reverb.PreDelaySeconds);
+        }
     }
 }
