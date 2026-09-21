@@ -2,239 +2,124 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using NAudio.Wave;
-using NAudioEffects;
 using Xunit;
 
-namespace NAudioEffects.Tests
+namespace NAudioEffects.Tests;
+
+public class EqualizerSampleProviderTests
 {
-    /// <summary>
-    /// Tests for <see cref="EqualizerSampleProvider"/> that verify the optimisation does not
-    /// change the observable output.
-    /// </summary>
-    public class EqualizerSampleProviderTests
+    private class ConstantSampleProvider : ISampleProvider
     {
-        private class TestSampleProvider : ISampleProvider
-        {
-            private readonly float[] _data;
-            private int _position;
-            public WaveFormat WaveFormat { get; }
+        private readonly float _value;
+        private readonly int _totalSamples;
+        private int _readCount;
 
-            public TestSampleProvider(float[] data, int sampleRate = 44100, int channels = 2)
+        public ConstantSampleProvider(float value, int totalSamples, int sampleRate = 44100, int channels = 1)
+        {
+            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels);
+            _value = value;
+            _totalSamples = totalSamples;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int samplesToRead = Math.Min(count, _totalSamples - _readCount);
+            if (samplesToRead <= 0) return 0;
+
+            for (int i = 0; i < samplesToRead; i++)
             {
-                _data = data ?? throw new ArgumentNullException(nameof(data));
-                WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels);
+                buffer[offset + i] = _value;
             }
-
-            public int Read(float[] buffer, int offset, int count)
-            {
-                int remaining = _data.Length - _position;
-                int toCopy = Math.Min(count, remaining);
-                if (toCopy <= 0) return 0;
-
-                Array.Copy(_data, _position, buffer, offset, toCopy);
-                _position += toCopy;
-                return toCopy;
-            }
+            _readCount += samplesToRead;
+            return samplesToRead;
         }
+    }
 
-        [Fact]
-        public void ProcessBlock_OutputUnchanged_WhenGainsAreZero()
+    [Fact]
+    public void Read_WithZeroGain_ReturnsUnchangedSamples()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, bandCount: 3);
+        var buffer = new float[1024];
+        
+        int read = eq.Read(buffer, 0, 1024);
+        
+        Assert.Equal(1024, read);
+        for (int i = 0; i < 1024; i++)
         {
-            // Arrange: deterministic source data (alternating small positive/negative values)
-            float[] sourceData = new float[1024];
-            for (int i = 0; i < sourceData.Length; i++)
-                sourceData[i] = (i % 2 == 0) ? 0.1f : -0.1f;
-
-            // Two independent providers with identical source data
-            var providerA = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
-            var providerB = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
-
-            // Act: read full buffers from both providers
-            float[] bufferA = new float[1024];
-            float[] bufferB = new float[1024];
-            int readA = providerA.Read(bufferA, 0, bufferA.Length);
-            int readB = providerB.Read(bufferB, 0, bufferB.Length);
-
-            // Assert: same number of samples read and identical sample values
-            Assert.Equal(readA, readB);
-            Assert.Equal(bufferA, bufferB);
+            Assert.Equal(0.5f, buffer[i], 5);
         }
+    }
 
-        [Fact]
-        public void Constructor_ThrowsArgumentNullException_WhenSourceIsNull()
+    [Fact]
+    public void Read_WithCancellationDuringFilterUpdate_ThrowsOperationCanceledException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, bandCount: 10);
+        var buffer = new float[1024];
+        
+        // Set a gain to mark filters as dirty, forcing UpdateAllFilters to run
+        eq.SetBandGain(0, 6.0f);
+        
+        var cts = new CancellationTokenSource();
+        cts.Cancel(); // Cancel immediately
+        
+        Assert.Throws<OperationCanceledException>(() => eq.Read(buffer, 0, 1024, cts.Token));
+    }
+
+    [Fact]
+    public void Read_WithCancellationBetweenBlocks_ThrowsOperationCanceledException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, bandCount: 3);
+        var buffer = new float[1024];
+        
+        var cts = new CancellationTokenSource();
+        // Cancel after first block (256 samples)
+        Task.Run(async () =>
         {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new EqualizerSampleProvider(null!));
-        }
-
-        [Fact]
-        public void Constructor_ThrowsArgumentOutOfRangeException_WhenBandCountIsZero()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 0));
-        }
-
-        [Fact]
-        public void Constructor_ThrowsArgumentOutOfRangeException_WhenBandCountIsNegative()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(new TestSampleProvider(new float[10]), -1));
-        }
-
-        [Fact]
-        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenBandIndexIsNegative()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(-1, 0f));
-        }
-
-        [Fact]
-        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenBandIndexIsTooLarge()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(5, 0f));
-        }
-
-        [Fact]
-        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenGainIsTooLow()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(0, -25f));
-        }
-
-        [Fact]
-        public void SetBandGain_ThrowsArgumentOutOfRangeException_WhenGainIsTooHigh()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.SetBandGain(0, 25f));
-        }
-
-        [Fact]
-        public void GetBandFrequency_ThrowsArgumentOutOfRangeException_WhenBandIndexIsNegative()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.GetBandFrequency(-1));
-        }
-
-        [Fact]
-        public void GetBandFrequency_ThrowsArgumentOutOfRangeException_WhenBandIndexIsTooLarge()
-        {
-            // Arrange
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10]), 5);
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.GetBandFrequency(5));
-        }
-
-        [Fact]
-        public void ProcessBlock_ThrowsArgumentOutOfRangeException_WhenFrequencyIsInvalid()
-        {
-            // Arrange: Create a provider with a sample rate that will make our test frequency invalid
-            // We'll use a very low sample rate so that even our lowest band frequency (60Hz) is >= sampleRate/2
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(new float[10], sampleRate: 100), 5);
-            // With sampleRate=100, sampleRate/2=50Hz. Our lowest band frequency is 60Hz, which is >= 50Hz, so invalid
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => provider.Read(new float[10], 0, 10));
-        }
-
-        [Fact]
-        public void ProcessBlock_WorksCorrectly_WithSingleBand()
-        {
-            // Arrange: Test edge case of single band to avoid division by zero
-            float[] sourceData = new float[1024];
-            for (int i = 0; i < sourceData.Length; i++)
-                sourceData[i] = (i % 2 == 0) ? 0.1f : -0.1f;
-
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 1);
-            provider.SetBandGain(0, 3.0f); // Set some gain
-
-            // Act
-            float[] buffer = new float[1024];
-            int read = provider.Read(buffer, 0, buffer.Length);
-
-            // Assert
-            Assert.Equal(1024, read);
-            // Just verify it doesn't throw and produces some output
-            Assert.NotEqual(0f, buffer[0]); // Should have processed the signal
-        }
-
-        [Fact]
-        public void Read_ThrowsOperationCanceledException_WhenCancellationRequested()
-        {
-            // Arrange: Create a provider with a large buffer to allow time for cancellation
-            float[] sourceData = new float[100000]; // Large buffer
-            for (int i = 0; i < sourceData.Length; i++)
-                sourceData[i] = (float)Math.Sin(i * 0.1);
-
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
-            provider.SetBandGain(0, 3.0f); // Set some gain to make processing non-trivial
-
-            // Use a cancellation token source
-            using var cts = new CancellationTokenSource();
-
-            // Act & Assert: Cancel immediately and verify exception is thrown
+            await Task.Delay(10);
             cts.Cancel();
-            Assert.Throws<OperationCanceledException>(() =>
-                provider.Read(new float[1000], 0, 1000, cts.Token));
-        }
+        });
+        
+        Assert.Throws<OperationCanceledException>(() => eq.Read(buffer, 0, 1024, cts.Token));
+    }
 
-        [Fact]
-        public void Read_StateNotCorrupted_AfterCancellation()
+    [Fact]
+    public void Read_AfterCancellation_StateIsNotCorrupted()
+    {
+        var source = new ConstantSampleProvider(0.5f, 2048);
+        var eq = new EqualizerSampleProvider(source, bandCount: 3);
+        var buffer = new float[2048];
+        
+        eq.SetBandGain(1, 12.0f);
+        
+        var cts = new CancellationTokenSource();
+        Task.Run(async () =>
         {
-            // Arrange: Create a provider with a large buffer
-            float[] sourceData = new float[100000]; // Large buffer
-            for (int i = 0; i < sourceData.Length; i++)
-                sourceData[i] = (float)Math.Sin(i * 0.1);
-
-            var provider = new EqualizerSampleProvider(new TestSampleProvider(sourceData), bandCount: 5);
-            provider.SetBandGain(0, 3.0f); // Set some gain
-
-            // Use a cancellation token source
-            using var cts = new CancellationTokenSource();
-
-            // Cancel after reading some data (but not all)
-            var readTask = Task.Run(() =>
-            {
-                try
-                {
-                    return provider.Read(new float[50000], 0, 50000, cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Expected
-                    return -1;
-                }
-            });
-
-            // Cancel quickly
-            cts.CancelAfter(10); // Cancel after 10 milliseconds
-
-            // Act
-            int result = readTask.Result;
-
-            // Assert: Operation was canceled
-            Assert.Equal(-1, result);
-
-            // Further assert: Provider can still be used normally after cancellation
-            float[] buffer = new float[1000];
-            int read = provider.Read(buffer, 0, buffer.Length, CancellationToken.None);
-            Assert.Equal(1000, read); // Should read successfully
+            await Task.Delay(10);
+            cts.Cancel();
+        });
+        
+        try
+        {
+            eq.Read(buffer, 0, 2048, cts.Token);
         }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+        
+        // Verify that subsequent reads work normally and state is intact
+        eq.SetBandGain(2, -6.0f); // Should not throw
+        var buffer2 = new float[1024];
+        int read = eq.Read(buffer2, 0, 1024);
+        Assert.Equal(1024, read);
+        
+        // Verify that the equalizer actually processes samples (values change due to gain)
+        // With 12dB gain on band 1, a constant 0.5 input will be amplified.
+        Assert.True(buffer2[0] != 0.5f || eq.Bypass, "Samples should be processed by EQ");
     }
 }

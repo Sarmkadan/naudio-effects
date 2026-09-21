@@ -200,4 +200,10 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         }
         return processed;
     }
+
+    /// <inheritdoc />
+    public override int Read(float[] buffer, int offset, int count)
+    {
+        return Read(buffer, offset, count, CancellationToken.None);
+    }
 }
