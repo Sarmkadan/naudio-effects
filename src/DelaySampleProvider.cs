@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Threading;
 using NAudio.Wave;
 
 namespace NAudioEffects
@@ -173,6 +174,28 @@ namespace NAudioEffects
                 _writePositions[channel] = (writePosition + 1) & _masks[channel];
                 buffer[offset + sample] = (input * dryMix) + (delayed * _mix);
             }
+        }
+
+        /// <summary>
+        /// Reads a block of samples, supporting cancellation.
+        /// </summary>
+        /// <param name="buffer">The buffer to read into.</param>
+        /// <param name="offset">The offset into the buffer.</param>
+        /// <param name="count">The number of samples to read.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>The number of samples read.</returns>
+        public int Read(float[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            const int blockSize = 256;
+            int processed = 0;
+            while (processed < count)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int blockSizeToProcess = Math.Min(blockSize, count - processed);
+                base.Read(buffer, offset + processed, blockSizeToProcess);
+                processed += blockSizeToProcess;
+            }
+            return count;
         }
     }
 }

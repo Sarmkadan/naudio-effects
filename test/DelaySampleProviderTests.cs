@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using NAudio.Wave;
 using Xunit;
 
@@ -221,6 +223,38 @@ namespace NAudioEffects.Tests
 
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() => delay.Read(buffer, 5, 10)); // offset 5 + count 10 = 15 > buffer length 10
+        }
+
+        [Fact]
+        public void Read_WithCancellationRequestedBeforeProcessing_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            var source = new ImpulseSampleProvider(new float[] { 0f }, new WaveFormat(44100, 1));
+            var delay = new DelaySampleProvider(source);
+            float[] buffer = new float[1024];
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert
+            Assert.Throws<OperationCanceledException>(() => delay.Read(buffer, 0, buffer.Length, cts.Token));
+        }
+
+        [Fact]
+        public async Task Read_WithCancellationRequestedDuringProcessing_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            var source = new ImpulseSampleProvider(new float[100000], new WaveFormat(44100, 1));
+            var delay = new DelaySampleProvider(source);
+            float[] buffer = new float[100000];
+            var cts = new CancellationTokenSource();
+
+            // Act
+            var task = Task.Run(() => delay.Read(buffer, 0, buffer.Length, cts.Token));
+            await Task.Delay(50);
+            cts.Cancel();
+
+            // Assert
+            await Assert.ThrowsAsync<OperationCanceledException>(() => task);
         }
     }
 }
