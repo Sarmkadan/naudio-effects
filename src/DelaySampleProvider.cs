@@ -78,33 +78,63 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the delay time in milliseconds, clamped between zero and the
+        /// Gets or sets the delay time in milliseconds. Must be between zero and the
         /// maximum delay specified when the effect was constructed.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the value is less than zero or greater than the maximum delay.
+        /// </exception>
         public float DelayMs
         {
             get => _delayMs;
-            set => _delayMs = Math.Clamp(value, 0f, _maxDelayMs);
+            set
+            {
+                if (value < 0f || value > _maxDelayMs)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "Delay time must be between zero and the maximum delay.");
+                }
+                _delayMs = value;
+            }
         }
 
         /// <summary>
         /// Gets or sets the amount of the delayed signal fed back into the delay line.
-        /// The value is clamped between 0 and 0.95. The default is 0.35.
+        /// The value must be between 0 and 0.95. The default is 0.35.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the value is less than 0 or greater than 0.95.
+        /// </exception>
         public float Feedback
         {
             get => _feedback;
-            set => _feedback = Math.Clamp(value, 0f, 0.95f);
+            set
+            {
+                if (value < 0f || value > 0.95f)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "Feedback must be between 0 and 0.95.");
+                }
+                _feedback = value;
+            }
         }
 
         /// <summary>
         /// Gets or sets the dry/wet mix, where 0 is dry only and 1 is wet only.
-        /// The value is clamped between 0 and 1. The default is 0.5.
+        /// The value must be between 0 and 1. The default is 0.5.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the value is less than 0 or greater than 1.
+        /// </exception>
         public float Mix
         {
             get => _mix;
-            set => _mix = Math.Clamp(value, 0f, 1f);
+            set
+            {
+                if (value < 0f || value > 1f)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "Mix must be between 0 and 1.");
+                }
+                _mix = value;
+            }
         }
 
         /// <summary>

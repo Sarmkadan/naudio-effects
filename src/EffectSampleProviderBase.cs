@@ -39,7 +39,7 @@ namespace NAudioEffects
         /// <param name="offset">The offset in the buffer to start writing.</param>
         /// <param name="count">The maximum number of samples to read.</param>
         /// <returns>The number of samples actually read.</returns>
-        public int Read(float[] buffer, int offset, int count)
+        public virtual int Read(float[] buffer, int offset, int count)
         {
             int samplesRead = _source.Read(buffer, offset, count);
             if (!Bypass && samplesRead > 0)
