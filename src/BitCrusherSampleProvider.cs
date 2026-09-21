@@ -16,22 +16,47 @@ namespace NAudioEffects
         private int _holdCounter;
         private int _holdPeriod;
 
+        // Backing fields
+        private int _bitDepth;
+        private int _holdFactor;
+
         // Default parameters
         private const int DefaultBitDepth = 8;
         private const int DefaultHoldFactor = 1;
         private const float DefaultMix = 0.5f;
 
         /// <summary>
-        /// Gets or sets the bit depth (2-16 bits). Default is 8 bits.
+        /// Gets or sets the bit depth (1-32 bits). Default is 8 bits.
         /// </summary>
-        public int BitDepth { get; set; } = DefaultBitDepth;
+        /// <exception cref="ArgumentOutOfRangeException">Value must be between 1 and 32.</exception>
+        public int BitDepth
+        {
+            get => _bitDepth;
+            set
+            {
+                if (value < 1 || value > 32)
+                    throw new ArgumentOutOfRangeException(nameof(value), "Bit depth must be between 1 and 32.");
+                _bitDepth = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the hold factor for sample rate decimation (1-16).
+        /// Gets or sets the hold factor for sample rate decimation (>=1).
         /// A value of 1 means no decimation, 2 means every other sample is kept, etc.
         /// Default is 1 (no decimation).
         /// </summary>
-        public int HoldFactor { get; set; } = DefaultHoldFactor;
+        /// <exception cref="ArgumentOutOfRangeException">Value must be greater than or equal to 1.</exception>
+        public int HoldFactor
+        {
+            get => _holdFactor;
+            set
+            {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException(nameof(value), "Hold factor must be greater than or equal to 1.");
+                _holdFactor = value;
+                UpdateHoldPeriod();
+            }
+        }
 
         /// <summary>
         /// Gets or sets the mix level (0 = dry only, 1 = wet only). Default is 0.5.
@@ -42,9 +67,17 @@ namespace NAudioEffects
         /// Initializes a new instance of the <see cref="BitCrusherSampleProvider"/> class.
         /// </summary>
         /// <param name="source">The source sample provider.</param>
+        /// <exception cref="ArgumentNullException">If source is null.</exception>
         public BitCrusherSampleProvider(ISampleProvider source)
             : base(source)
         {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            // Initialize backing fields with default values
+            _bitDepth = DefaultBitDepth;
+            _holdFactor = DefaultHoldFactor;
+
             _sampleRate = source.WaveFormat.SampleRate;
             UpdateHoldPeriod();
         }
@@ -56,6 +89,29 @@ namespace NAudioEffects
         {
             _holdPeriod = Math.Max(1, HoldFactor);
             _holdCounter = 0;
+        }
+
+        /// <summary>
+        /// Reads samples from the source and processes them.
+        /// </summary>
+        /// <param name="buffer">The buffer to read into.</param>
+        /// <param name="offset">The offset in the buffer to start writing.</param>
+        /// <param name="count">The maximum number of samples to read.</param>
+        /// <returns>The number of samples actually read.</returns>
+        /// <exception cref="ArgumentNullException">If buffer is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If offset or count is negative.</exception>
+        public override int Read(float[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (offset + count > buffer.Length)
+                throw new ArgumentException("Offset and count exceed buffer length.");
+
+            return base.Read(buffer, offset, count);
         }
 
         /// <summary>
@@ -85,8 +141,6 @@ namespace NAudioEffects
 
         private void ProcessChannel(float[] buffer, int offset, int samplesRead, int channelIndex, float wetMix, float dryMix)
         {
-            int bitDepthClamped = Math.Clamp(BitDepth, 2, 16);
-
             // Process samples
             for (int s = 0; s < samplesRead; s++)
             {
@@ -100,7 +154,7 @@ namespace NAudioEffects
                     _holdCounter = 0;
 
                     // Apply bit depth reduction
-                    float crushedSample = ApplyBitCrushing(inputSample, bitDepthClamped);
+                    float crushedSample = ApplyBitCrushing(inputSample, BitDepth);
 
                     // Mix dry and wet signals
                     buffer[sampleIndex + channelIndex] = (inputSample * dryMix) + (crushedSample * wetMix);
@@ -117,10 +171,16 @@ namespace NAudioEffects
         /// Applies bit depth reduction to a sample.
         /// </summary>
         /// <param name="sample">The input sample.</param>
-        /// <param name="bitDepth">The bit depth to reduce to (2-16).</param>
+        /// <param name="bitDepth">The bit depth to reduce to (1-32).</param>
         /// <returns>The quantized sample.</returns>
         private static float ApplyBitCrushing(float sample, int bitDepth)
         {
+            // Handle 1 bit as a special case (two levels: -1 and 1)
+            if (bitDepth == 1)
+            {
+                return sample >= 0 ? 1f : -1f;
+            }
+
             // Calculate the maximum value for the given bit depth
             float maxValue = (float)Math.Pow(2, bitDepth - 1) - 1;
             float scale = 1.0f / maxValue;
