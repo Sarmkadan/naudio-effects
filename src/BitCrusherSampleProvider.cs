@@ -6,10 +6,38 @@ using NAudio.Wave;
 namespace NAudioEffects
 {
     /// <summary>
-    /// Bit crusher effect that reduces bit depth (2-16 bits) and decimates sample rate (hold factor).
-    /// Creates a lo-fi, distorted sound by quantizing samples to fewer bits and reducing the effective
-    /// sample rate. The wet/dry mix allows blending the processed signal with the original.
+    /// Provides a bit-crusher effect for an NAudio sample stream.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Bit-depth reduction quantizes each floating-point sample to one of a smaller number of amplitude
+    /// levels, introducing the characteristic distortion and noise associated with low-resolution audio.
+    /// Sample-rate reduction is simulated by processing only every <see cref="HoldFactor"/>th sample;
+    /// increasing the hold factor therefore produces progressively stronger decimation artifacts.
+    /// <see cref="Mix"/> blends the processed signal with the original signal.
+    /// </para>
+    /// <para>
+    /// <see cref="BitDepth"/> accepts values from 1 through 32, <see cref="HoldFactor"/> accepts values
+    /// greater than or equal to 1, and the effective range of <see cref="Mix"/> is 0 through 1. Mix values
+    /// outside that range are clamped when audio is processed.
+    /// </para>
+    /// <example>
+    /// The provider can be inserted between an audio source and an NAudio playback device:
+    /// <code>
+    /// using var reader = new AudioFileReader("input.wav");
+    /// var crusher = new BitCrusherSampleProvider(reader)
+    /// {
+    ///     BitDepth = 8,
+    ///     HoldFactor = 4,
+    ///     Mix = 0.75f
+    /// };
+    ///
+    /// using var output = new WaveOutEvent();
+    /// output.Init(crusher);
+    /// output.Play();
+    /// </code>
+    /// </example>
+    /// </remarks>
     public class BitCrusherSampleProvider : EffectSampleProviderBase
     {
         private readonly float _sampleRate;
@@ -26,9 +54,12 @@ namespace NAudioEffects
         private const float DefaultMix = 0.5f;
 
         /// <summary>
-        /// Gets or sets the bit depth (1-32 bits). Default is 8 bits.
+        /// Gets or sets the number of bits used to quantize each processed sample.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">Value must be between 1 and 32.</exception>
+        /// <value>An integer from 1 through 32. The default is 8.</value>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The assigned value is less than 1 or greater than 32.
+        /// </exception>
         public int BitDepth
         {
             get => _bitDepth;
@@ -41,11 +72,13 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the hold factor for sample rate decimation (>=1).
-        /// A value of 1 means no decimation, 2 means every other sample is kept, etc.
-        /// Default is 1 (no decimation).
+        /// Gets or sets the factor used to reduce the effective sample rate.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">Value must be greater than or equal to 1.</exception>
+        /// <value>
+        /// An integer greater than or equal to 1. A value of 1 disables sample-rate reduction, a value of
+        /// 2 processes every second sample, and so on. The default is 1.
+        /// </value>
+        /// <exception cref="ArgumentOutOfRangeException">The assigned value is less than 1.</exception>
         public int HoldFactor
         {
             get => _holdFactor;
@@ -59,15 +92,20 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the mix level (0 = dry only, 1 = wet only). Default is 0.5.
+        /// Gets or sets the balance between the original and processed signals.
         /// </summary>
+        /// <value>
+        /// A value from 0 to 1, where 0 is fully dry and 1 is fully wet. The default is 0.5.
+        /// Values outside this range are clamped during processing.
+        /// </value>
         public float Mix { get; set; } = DefaultMix;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="BitCrusherSampleProvider"/> class.
+        /// Initializes a new instance of the <see cref="BitCrusherSampleProvider"/> class with default
+        /// effect settings.
         /// </summary>
-        /// <param name="source">The source sample provider.</param>
-        /// <exception cref="ArgumentNullException">If source is null.</exception>
+        /// <param name="source">The sample provider from which audio is read.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> is <see langword="null"/>.</exception>
         public BitCrusherSampleProvider(ISampleProvider source)
             : base(source)
         {
@@ -92,14 +130,20 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Reads samples from the source and processes them.
+        /// Reads samples from the source and applies bit-depth and sample-rate reduction.
         /// </summary>
-        /// <param name="buffer">The buffer to read into.</param>
-        /// <param name="offset">The offset in the buffer to start writing.</param>
-        /// <param name="count">The maximum number of samples to read.</param>
-        /// <returns>The number of samples actually read.</returns>
-        /// <exception cref="ArgumentNullException">If buffer is null.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If offset or count is negative.</exception>
+        /// <param name="buffer">The buffer that receives the processed samples.</param>
+        /// <param name="offset">The zero-based index in <paramref name="buffer"/> at which writing begins.</param>
+        /// <param name="count">The maximum number of samples to write.</param>
+        /// <returns>The number of samples written to <paramref name="buffer"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="buffer"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="offset"/> or <paramref name="count"/> is negative.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// The region described by <paramref name="offset"/> and <paramref name="count"/> extends beyond
+        /// the end of <paramref name="buffer"/>.
+        /// </exception>
         public override int Read(float[] buffer, int offset, int count)
         {
             if (buffer == null)
@@ -200,8 +244,9 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Returns a concise, informative representation of this provider.
+        /// Returns a string that contains the current bit depth, hold factor, and mix settings.
         /// </summary>
+        /// <returns>A string representation of the provider's current configuration.</returns>
         public override string ToString() => $"BitCrusherSampleProvider {{ BitDepth = {BitDepth}, HoldFactor = {HoldFactor}, Mix = {Mix} }}";
     }
 }
