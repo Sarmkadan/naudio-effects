@@ -122,4 +122,60 @@ public class EqualizerSampleProviderTests
         // With 12dB gain on band 1, a constant 0.5 input will be amplified.
         Assert.True(buffer2[0] != 0.5f || eq.Bypass, "Samples should be processed by EQ");
     }
+
+    [Fact]
+    public void Builder_Build_WithBands_ReturnsEqualizerWithCorrectBandCount()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerBuilder()
+            .AddBand(1000f, 6.0f, 1.0f)
+            .AddLowShelf(200f, 3.0f, 0.7f)
+            .AddHighShelf(8000f, -4.0f, 0.7f)
+            .Build(source);
+
+        Assert.Equal(3, eq.BandCount);
+        
+        var buffer = new float[1024];
+        int read = eq.Read(buffer, 0, 1024);
+        Assert.Equal(1024, read);
+    }
+
+    [Fact]
+    public void Builder_Build_WithEmptyBands_ThrowsInvalidOperationException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var builder = new EqualizerBuilder();
+        
+        Assert.Throws<InvalidOperationException>(() => builder.Build(source));
+    }
+
+    [Fact]
+    public void Builder_IsReusable()
+    {
+        var source1 = new ConstantSampleProvider(0.5f, 1024);
+        var source2 = new ConstantSampleProvider(0.5f, 1024);
+        
+        var builder = new EqualizerBuilder()
+            .AddBand(500f, 10.0f, 1.0f);
+            
+        var eq1 = builder.Build(source1);
+        Assert.Equal(1, eq1.BandCount);
+        
+        // Reuse builder
+        var eq2 = builder
+            .AddPeak(1000f, -5.0f, 1.0f)
+            .Build(source2);
+            
+        Assert.Equal(1, eq2.BandCount);
+    }
+
+    [Fact]
+    public void Builder_Build_WithInvalidFrequency_ThrowsArgumentOutOfRangeException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var builder = new EqualizerBuilder()
+            .AddBand(0f, 6.0f, 1.0f); // Invalid frequency
+            
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.Build(source));
+    }
 }

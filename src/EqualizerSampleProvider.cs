@@ -1,5 +1,7 @@
 using NAudio.Dsp;
 using NAudio.Wave;
+using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace NAudioEffects;
@@ -11,6 +13,9 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
 {
     private readonly BiQuadFilter[] _filters;
     private readonly float[] _gainsDb;
+    private readonly float[] _frequencies;
+    private readonly float[] _qValues;
+    private readonly EqualizerFilterType[] _filterTypes;
     private readonly int _bandCount;
 
     // When any band gain changes we defer rebuilding the BiQuadFilter objects until the next Read.
@@ -37,12 +42,18 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         _bandCount = bandCount;
         _gainsDb = new float[bandCount];
         _filters = new BiQuadFilter[bandCount];
+        _frequencies = new float[bandCount];
+        _qValues = new float[bandCount];
+        _filterTypes = new EqualizerFilterType[bandCount];
 
         // Initialise gains to zero; filters will be created lazily on first processing pass.
         for (int i = 0; i < bandCount; i++)
         {
             _gainsDb[i] = 0.0f;
             _filters[i] = null!; // suppressed null warning – will be replaced before use
+            _filterTypes[i] = EqualizerFilterType.Peaking;
+            _qValues[i] = 1.0f;
+            _frequencies[i] = GetBandFrequency(i); // Default to log spacing
         }
     }
 
@@ -51,7 +62,9 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
     /// </summary>
     /// <param name="band">The band index (0-based).</param>
     /// <param name="gainDb">The gain in decibels.</param>
-    public void SetBandGain(int band, float gainDb)
+    /// <param name="filterType">The type of filter to apply.</param>
+    /// <param name="q">The Q factor (resonance) of the filter.</param>
+    public void SetBandGain(int band, float gainDb, EqualizerFilterType filterType = EqualizerFilterType.Peaking, float q = 1.0f)
     {
         if (band < 0 || band >= _bandCount)
         {
@@ -65,7 +78,25 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         }
 
         _gainsDb[band] = gainDb;
+        _filterTypes[band] = filterType;
+        _qValues[band] = q;
         // Defer rebuilding the filter until the next processing pass.
+        _filtersDirty = true;
+    }
+
+    /// <summary>
+    /// Sets the center frequency for a specific band.
+    /// </summary>
+    /// <param name="band">The band index (0-based).</param>
+    /// <param name="frequency">The center frequency in Hz.</param>
+    public void SetBandFrequency(int band, float frequency)
+    {
+        if (band < 0 || band >= _bandCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(band), $"Band must be between 0 and {_bandCount - 1}");
+        }
+
+        _frequencies[band] = frequency;
         _filtersDirty = true;
     }
 
@@ -114,8 +145,10 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         for (int i = 0; i < _bandCount; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            float frequency = GetBandFrequency(i);
+            float frequency = _frequencies[i];
             float gainDb = _gainsDb[i];
+            EqualizerFilterType filterType = _filterTypes[i];
+            float q = _qValues[i];
 
             // Validate frequency is in the valid range (0, sampleRate/2)
             if (frequency <= 0f || frequency >= WaveFormat.SampleRate / 2f)
@@ -124,14 +157,18 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
                     $"Frequency {frequency}Hz is not in the valid range (0, {WaveFormat.SampleRate/2}Hz) for band {i}.");
             }
 
-            // Validate Q factor (fixed at 1.0f, but validate for completeness)
-            const float q = 1.0f;
+            // Validate Q factor
             if (q <= 0f)
             {
                 throw new ArgumentOutOfRangeException(nameof(q), $"Q factor must be greater than zero. Actual value: {q}");
             }
 
-            _filters[i] = BiQuadFilter.PeakingEQ(WaveFormat.SampleRate, frequency, q, gainDb);
+            _filters[i] = filterType switch
+            {
+                EqualizerFilterType.LowShelf => BiQuadFilter.LowShelf(WaveFormat.SampleRate, frequency, q, gainDb),
+                EqualizerFilterType.HighShelf => BiQuadFilter.HighShelf(WaveFormat.SampleRate, frequency, q, gainDb),
+                _ => BiQuadFilter.PeakingEQ(WaveFormat.SampleRate, frequency, q, gainDb)
+            };
         }
     }
 
@@ -205,5 +242,112 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
     public override int Read(float[] buffer, int offset, int count)
     {
         return Read(buffer, offset, count, CancellationToken.None);
+    }
+}
+
+/// <summary>
+/// Specifies the type of filter to apply in the equalizer.
+/// </summary>
+public enum EqualizerFilterType
+{
+    /// <summary>
+    /// Peaking EQ filter.
+    /// </summary>
+    Peaking,
+    /// <summary>
+    /// Low shelf filter.
+    /// </summary>
+    LowShelf,
+    /// <summary>
+    /// High shelf filter.
+    /// </summary>
+    HighShelf
+}
+
+/// <summary>
+/// Fluent builder for constructing <see cref="EqualizerSampleProvider"/> instances.
+/// </summary>
+public class EqualizerBuilder
+{
+    private readonly List<(float Frequency, float GainDb, float Q, EqualizerFilterType Type)> _bands = new();
+
+    /// <summary>
+    /// Adds a peaking band to the equalizer.
+    /// </summary>
+    public EqualizerBuilder AddBand(float frequency, float gainDb, float q)
+    {
+        _bands.Add((frequency, gainDb, q, EqualizerFilterType.Peaking));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a low shelf band to the equalizer.
+    /// </summary>
+    public EqualizerBuilder AddLowShelf(float frequency, float gainDb, float q)
+    {
+        _bands.Add((frequency, gainDb, q, EqualizerFilterType.LowShelf));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a high shelf band to the equalizer.
+    /// </summary>
+    public EqualizerBuilder AddHighShelf(float frequency, float gainDb, float q)
+    {
+        _bands.Add((frequency, gainDb, q, EqualizerFilterType.HighShelf));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a peak band to the equalizer.
+    /// </summary>
+    public EqualizerBuilder AddPeak(float frequency, float gainDb, float q)
+    {
+        _bands.Add((frequency, gainDb, q, EqualizerFilterType.Peaking));
+        return this;
+    }
+
+    /// <summary>
+    /// Builds and returns the configured <see cref="EqualizerSampleProvider"/>.
+    /// </summary>
+    /// <param name="source">The source sample provider.</param>
+    /// <returns>A configured <see cref="EqualizerSampleProvider"/>.</returns>
+    public EqualizerSampleProvider Build(ISampleProvider source)
+    {
+        if (_bands.Count == 0)
+        {
+            throw new InvalidOperationException("At least one band must be added before building.");
+        }
+
+        // Validate bands at build time
+        foreach (var (freq, gain, q, type) in _bands)
+        {
+            if (freq <= 0f || freq >= source.WaveFormat.SampleRate / 2f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(freq),
+                    $"Frequency {freq}Hz is not in the valid range (0, {source.WaveFormat.SampleRate / 2}Hz).");
+            }
+            if (gain < -24f || gain > 24f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(gain),
+                    $"Gain must be between -24 dB and +24 dB. Actual value: {gain} dB");
+            }
+            if (q <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(q), $"Q factor must be greater than zero. Actual value: {q}");
+            }
+        }
+
+        var eq = new EqualizerSampleProvider(source, _bands.Count);
+        for (int i = 0; i < _bands.Count; i++)
+        {
+            var (freq, gain, q, type) = _bands[i];
+            eq.SetBandFrequency(i, freq);
+            eq.SetBandGain(i, gain, type, q);
+        }
+
+        // Clear bands to allow the builder to be reused
+        _bands.Clear();
+        return eq;
     }
 }
