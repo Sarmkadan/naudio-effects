@@ -3,6 +3,8 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NAudio.Wave;
 
 namespace NAudioEffects
@@ -33,8 +35,31 @@ namespace NAudioEffects
     /// Factory methods for creating common audio effect chains and presets.
     /// These presets compose multiple effects (compressor, EQ, gate, limiter) over an ISampleProvider source.
     /// </summary>
-    public static class EffectChainPresets
+    public class EffectChainPresets
     {
+        private static readonly Action<ILogger, string, int, Exception?> PresetLoaded =
+            LoggerMessage.Define<string, int>(
+                LogLevel.Information,
+                new EventId(1, nameof(PresetLoaded)),
+                "Loaded preset {PresetName} with {EffectCount} effects.");
+
+        private static readonly Action<ILogger, string, Exception?> PresetLoadFailed =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(2, nameof(PresetLoadFailed)),
+                "Failed to load preset {PresetName}.");
+
+        private readonly ILogger<EffectChainPresets> _logger;
+
+        /// <summary>
+        /// Initializes a preset factory.
+        /// </summary>
+        /// <param name="logger">The logger to use, or <see langword="null"/> to disable logging.</param>
+        public EffectChainPresets(ILogger<EffectChainPresets>? logger = null)
+        {
+            _logger = logger ?? NullLogger<EffectChainPresets>.Instance;
+        }
+
         /// <summary>
         /// Creates a Vocal Polish preset chain by loading settings from a JSON file.
         /// </summary>
@@ -50,7 +75,24 @@ namespace NAudioEffects
         /// <param name="source">The input audio source</param>
         /// <returns>An ISampleProvider with the complete effect chain applied</returns>
         /// <exception cref="PresetLoadException">Thrown when the preset file is missing, malformed, or references an unknown effect type.</exception>
-        public static ISampleProvider VocalPolish(ISampleProvider source)
+        public ISampleProvider VocalPolish(ISampleProvider source)
+        {
+            return CreateVocalPolish(source, _logger);
+        }
+
+        /// <summary>
+        /// Creates a Vocal Polish preset chain, optionally writing structured log entries.
+        /// </summary>
+        public static ISampleProvider VocalPolish(
+            ISampleProvider source,
+            ILogger<EffectChainPresets>? logger = null)
+        {
+            return CreateVocalPolish(source, logger ?? NullLogger<EffectChainPresets>.Instance);
+        }
+
+        private static ISampleProvider CreateVocalPolish(
+            ISampleProvider source,
+            ILogger<EffectChainPresets> logger)
         {
             if (source == null)
             {
@@ -60,11 +102,15 @@ namespace NAudioEffects
             try
             {
                 var preset = LoadPreset<VocalPolishPreset>("VocalPolish");
-                return BuildVocalPolishChain(source, preset);
+                var chain = BuildVocalPolishChain(source, preset);
+                PresetLoaded(logger, "VocalPolish", 4, null);
+                return chain;
             }
-            catch (Exception ex) when (!(ex is PresetLoadException))
+            catch (Exception ex)
             {
-                throw new PresetLoadException("VocalPolish", ex);
+                var exception = ex as PresetLoadException ?? new PresetLoadException("VocalPolish", ex);
+                PresetLoadFailed(logger, "VocalPolish", exception);
+                throw exception;
             }
         }
 
@@ -83,7 +129,24 @@ namespace NAudioEffects
         /// <param name="source">The input audio source</param>
         /// <returns>An ISampleProvider with the complete lo-fi effect chain applied</returns>
         /// <exception cref="PresetLoadException">Thrown when the preset file is missing, malformed, or references an unknown effect type.</exception>
-        public static ISampleProvider LoFi(ISampleProvider source)
+        public ISampleProvider LoFi(ISampleProvider source)
+        {
+            return CreateLoFi(source, _logger);
+        }
+
+        /// <summary>
+        /// Creates a Lo-Fi preset chain, optionally writing structured log entries.
+        /// </summary>
+        public static ISampleProvider LoFi(
+            ISampleProvider source,
+            ILogger<EffectChainPresets>? logger = null)
+        {
+            return CreateLoFi(source, logger ?? NullLogger<EffectChainPresets>.Instance);
+        }
+
+        private static ISampleProvider CreateLoFi(
+            ISampleProvider source,
+            ILogger<EffectChainPresets> logger)
         {
             if (source == null)
             {
@@ -93,11 +156,15 @@ namespace NAudioEffects
             try
             {
                 var preset = LoadPreset<LoFiPreset>("LoFi");
-                return BuildLoFiChain(source, preset);
+                var chain = BuildLoFiChain(source, preset);
+                PresetLoaded(logger, "LoFi", 4, null);
+                return chain;
             }
-            catch (Exception ex) when (!(ex is PresetLoadException))
+            catch (Exception ex)
             {
-                throw new PresetLoadException("LoFi", ex);
+                var exception = ex as PresetLoadException ?? new PresetLoadException("LoFi", ex);
+                PresetLoadFailed(logger, "LoFi", exception);
+                throw exception;
             }
         }
 
@@ -116,7 +183,24 @@ namespace NAudioEffects
         /// <param name="source">The input audio source</param>
         /// <returns>An ISampleProvider with the complete podcast effect chain applied</returns>
         /// <exception cref="PresetLoadException">Thrown when the preset file is missing, malformed, or references an unknown effect type.</exception>
-        public static ISampleProvider Podcast(ISampleProvider source)
+        public ISampleProvider Podcast(ISampleProvider source)
+        {
+            return CreatePodcast(source, _logger);
+        }
+
+        /// <summary>
+        /// Creates a Podcast preset chain, optionally writing structured log entries.
+        /// </summary>
+        public static ISampleProvider Podcast(
+            ISampleProvider source,
+            ILogger<EffectChainPresets>? logger = null)
+        {
+            return CreatePodcast(source, logger ?? NullLogger<EffectChainPresets>.Instance);
+        }
+
+        private static ISampleProvider CreatePodcast(
+            ISampleProvider source,
+            ILogger<EffectChainPresets> logger)
         {
             if (source == null)
             {
@@ -126,11 +210,15 @@ namespace NAudioEffects
             try
             {
                 var preset = LoadPreset<PodcastPreset>("Podcast");
-                return BuildPodcastChain(source, preset);
+                var chain = BuildPodcastChain(source, preset);
+                PresetLoaded(logger, "Podcast", 4, null);
+                return chain;
             }
-            catch (Exception ex) when (!(ex is PresetLoadException))
+            catch (Exception ex)
             {
-                throw new PresetLoadException("Podcast", ex);
+                var exception = ex as PresetLoadException ?? new PresetLoadException("Podcast", ex);
+                PresetLoadFailed(logger, "Podcast", exception);
+                throw exception;
             }
         }
 
