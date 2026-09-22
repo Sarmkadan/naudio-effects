@@ -7,9 +7,10 @@ using NAudio.Wave;
 namespace NAudioEffects
 {
     /// <summary>
-    /// Classic feedback delay effect that creates repeating echoes of the source signal.
-    /// Each channel is processed with an independent circular delay line.
+    /// Provides a classic feedback delay effect that creates repeating echoes of an
+    /// <see cref="ISampleProvider"/> source.
     /// </summary>
+    /// <remarks>Each channel is processed with an independent circular delay line.</remarks>
     public class DelaySampleProvider : EffectSampleProviderBase
     {
         private const float DefaultFeedback = 0.35f;
@@ -27,11 +28,21 @@ namespace NAudioEffects
         /// <summary>
         /// Initializes a new instance of the <see cref="DelaySampleProvider"/> class.
         /// </summary>
-        /// <param name="source">The source sample provider.</param>
-        /// <param name="maxDelayMs">The maximum supported delay time in milliseconds.</param>
+        /// <param name="source">The non-<see langword="null"/> source sample provider to process.</param>
+        /// <param name="maxDelayMs">
+        /// The maximum supported delay time, in milliseconds. The value must be finite and
+        /// greater than or equal to <c>0</c>. The default is <c>2000</c> milliseconds.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="source"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// The wave format of <paramref name="source"/> has a sample rate or channel count
+        /// that is less than or equal to zero.
+        /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when <paramref name="maxDelayMs"/> is negative, not finite, or too large
-        /// to allocate a delay line for the source sample rate.
+        /// <paramref name="maxDelayMs"/> is negative, is not finite, or is too large for
+        /// the source sample rate.
         /// </exception>
         public DelaySampleProvider(ISampleProvider source, float maxDelayMs = 2000f)
             : base(source)
@@ -79,11 +90,14 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the delay time in milliseconds. Must be between zero and the
-        /// maximum delay specified when the effect was constructed.
+        /// Gets or sets the delay time, in milliseconds.
         /// </summary>
+        /// <value>
+        /// A value from <c>0</c> through the maximum delay supplied to the constructor,
+        /// inclusive. The default is <c>0</c> milliseconds.
+        /// </value>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the value is less than zero or greater than the maximum delay.
+        /// The assigned value is less than <c>0</c> or greater than the configured maximum delay.
         /// </exception>
         public float DelayMs
         {
@@ -99,11 +113,11 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the amount of the delayed signal fed back into the delay line.
-        /// The value must be between 0 and 0.95. The default is 0.35.
+        /// Gets or sets the unitless proportion of the delayed signal fed back into the delay line.
         /// </summary>
+        /// <value>A value from <c>0</c> through <c>0.95</c>, inclusive. The default is <c>0.35</c>.</value>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the value is less than 0 or greater than 0.95.
+        /// The assigned value is less than <c>0</c> or greater than <c>0.95</c>.
         /// </exception>
         public float Feedback
         {
@@ -119,11 +133,14 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Gets or sets the dry/wet mix, where 0 is dry only and 1 is wet only.
-        /// The value must be between 0 and 1. The default is 0.5.
+        /// Gets or sets the unitless dry/wet mix.
         /// </summary>
+        /// <value>
+        /// A value from <c>0</c> through <c>1</c>, inclusive, where <c>0</c> is fully dry
+        /// and <c>1</c> is fully wet. The default is <c>0.5</c>.
+        /// </value>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the value is less than 0 or greater than 1.
+        /// The assigned value is less than <c>0</c> or greater than <c>1</c>.
         /// </exception>
         public float Mix
         {
@@ -177,13 +194,17 @@ namespace NAudioEffects
         }
 
         /// <summary>
-        /// Reads a block of samples, supporting cancellation.
+        /// Reads samples from the source, applies the delay effect unless bypassed, and
+        /// periodically observes a cancellation request.
         /// </summary>
-        /// <param name="buffer">The buffer to read into.</param>
-        /// <param name="offset">The offset into the buffer.</param>
-        /// <param name="count">The number of samples to read.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>The number of samples read.</returns>
+        /// <param name="buffer">The buffer into which processed samples are written.</param>
+        /// <param name="offset">The zero-based index in <paramref name="buffer"/> at which writing begins.</param>
+        /// <param name="count">The number of interleaved samples to read.</param>
+        /// <param name="cancellationToken">The token used to cancel the read operation.</param>
+        /// <returns><paramref name="count"/> after all requested samples have been processed.</returns>
+        /// <exception cref="OperationCanceledException">
+        /// Cancellation was requested through <paramref name="cancellationToken"/>.
+        /// </exception>
         public int Read(float[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             const int blockSize = 256;
