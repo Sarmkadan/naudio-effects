@@ -108,56 +108,71 @@ namespace NAudioEffects
 
             int channels = WaveFormat.Channels;
 
-            // Update LFO phase
-            float lfoIncrement = (float)(2.0 * Math.PI * RateHz / _sampleRate);
+            // Update LFO phase increment per sample (not per block)
+            float lfoIncrement = (float)(2.0 * Math.PI * RateHz / _sampleRate) / channels;
 
-            // Process each channel separately
-            for (int ch = 0; ch < channels; ch++)
+            // Process all samples interleaved
+            for (int s = 0; s < samplesRead; s++)
             {
-                ProcessChannel(buffer, offset, samplesRead, ch, lfoIncrement);
-            }
+                int channel = s % channels;
 
-            // Update LFO phase for next block
-            _lfoPhase += lfoIncrement * samplesRead;
-            if (_lfoPhase > Math.PI * 2.0f)
-            {
-                _lfoPhase -= (float)(Math.PI * 2.0f);
+                // Update LFO value for this sample's channel
+                _lfoValue = (float)Math.Sin(_lfoPhase + (channel * 0.5f));
+
+                // Process one sample
+                ProcessSample(buffer, offset + s, channel, lfoIncrement);
+
+                // Accumulate LFO phase for this sample
+                _lfoPhase += lfoIncrement * channels;
+                if (_lfoPhase > Math.PI * 2.0f)
+                {
+                    _lfoPhase -= (float)(Math.PI * 2.0f);
+                }
             }
         }
 
-        private void ProcessChannel(float[] buffer, int offset, int samplesRead, int channelIndex, float lfoIncrement)
+        /// <summary>
+        /// Processes a single interleaved sample through the chorus effect.
+        /// </summary>
+        /// <param name="buffer">The audio buffer containing interleaved samples.</param>
+        /// <param name="sampleOffset">The offset of the sample in the buffer.</param>
+        /// <param name="channel">The channel index for this sample.</param>
+        /// <param name="lfoIncrement">The LFO increment per channel.</param>
+        private void ProcessSample(float[] buffer, int sampleOffset, int channel, float lfoIncrement)
         {
             float wetMix = Math.Clamp(Mix, 0.0f, 1.0f);
             float dryMix = 1.0f - wetMix;
 
-            // Update LFO value for this channel
-            _lfoValue = (float)Math.Sin(_lfoPhase + (channelIndex * 0.5f)); // Slight phase shift per channel for stereo effect
-
-            // Process samples
-            for (int s = 0; s < samplesRead; s++)
+            // If mix is 0 (dry only), bypass all processing for bit-identical output
+            if (wetMix == 0.0f)
             {
-                int sampleIndex = offset + s;
-                float inputSample = buffer[sampleIndex + channelIndex];
-
-                // Write to delay buffer
-                _delayBuffer.Write(inputSample);
-                _writeIndex = (_writeIndex + 1) % _delayBuffer.Capacity;
-
-                // Calculate modulated delay time using LFO
-                // LFO ranges from -1 to 1, we scale by depth and add base delay
-                float modulation = _lfoValue * DepthMs;
-                float currentDelayMs = BaseDelayMs + modulation;
-                int currentDelaySamples = (int)((currentDelayMs / 1000.0f) * _sampleRate);
-
-                // Clamp delay to valid range (1 sample to buffer capacity - 1)
-                currentDelaySamples = Math.Clamp(currentDelaySamples, 1, _delayBuffer.Capacity - 1);
-
-                // Read from delay buffer with linear interpolation
-                float delayedSample = ReadWithLinearInterpolation(currentDelaySamples);
-
-                // Mix dry and wet signals
-                buffer[sampleIndex + channelIndex] = (inputSample * dryMix) + (delayedSample * wetMix);
+                return;
             }
+
+            // Update LFO value for this channel
+            _lfoValue = (float)Math.Sin(_lfoPhase + (channel * 0.5f)); // Slight phase shift per channel for stereo effect
+
+            // Read the interleaved sample
+            float inputSample = buffer[sampleOffset];
+
+            // Write to delay buffer
+            _delayBuffer.Write(inputSample);
+            _writeIndex = (_writeIndex + 1) % _delayBuffer.Capacity;
+
+            // Calculate modulated delay time using LFO
+            // LFO ranges from -1 to 1, we scale by depth and add base delay
+            float modulation = _lfoValue * DepthMs;
+            float currentDelayMs = BaseDelayMs + modulation;
+            int currentDelaySamples = (int)((currentDelayMs / 1000.0f) * _sampleRate);
+
+            // Clamp delay to valid range (1 sample to buffer capacity - 1)
+            currentDelaySamples = Math.Clamp(currentDelaySamples, 1, _delayBuffer.Capacity - 1);
+
+            // Read from delay buffer with linear interpolation
+            float delayedSample = ReadWithLinearInterpolation(currentDelaySamples);
+
+            // Mix dry and wet signals
+            buffer[sampleOffset] = (inputSample * dryMix) + (delayedSample * wetMix);
         }
 
         /// <summary>
