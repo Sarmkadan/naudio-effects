@@ -74,6 +74,106 @@ static class Program
 | `KneeDb` | dB | 6 | 0–12 | Width of the soft knee; 0 gives a hard knee |
 | `MakeupGainDb` | dB | 0 | 0–12 | Gain applied after compression to restore loudness |
 
+## Building a 3-band EQ
+
+`EqualizerSampleProvider` runs one biquad filter per band. `EqualizerBuilder` creates the bands in the order you add them, so band 0 is the first `Add…` call. Gains must be between -24 and +24 dB, and each frequency must be above 0 and below half the sample rate.
+
+The first example builds a 3-band EQ over a WAV file, plays it, and changes the peaking band's gain after three seconds. The shelf Q values are 0.707 (the usual Butterworth slope); the spec did not give one.
+
+```csharp
+using System.Threading;
+using NAudio.Wave;
+using NAudioEffects;
+
+static class Program
+{
+    static void Main()
+    {
+        using var reader = new AudioFileReader("input.wav");
+
+        var eq = new EqualizerBuilder()
+            .AddLowShelf(100f, 3f, 0.707f)    // band 0: low shelf, +3 dB
+            .AddPeak(1000f, -4f, 1.0f)        // band 1: peaking, -4 dB, Q 1.0
+            .AddHighShelf(8000f, 2f, 0.707f)  // band 2: high shelf, +2 dB
+            .Build(reader);
+
+        using var player = new WaveOutEvent();
+        player.Init(eq.ToWaveProvider());
+        player.Play();
+
+        Thread.Sleep(3000);
+
+        // Change band 1 while audio plays. The new filter is built on the next block.
+        // Pass the filter type and Q again: SetBandGain resets them to Peaking and 1.0 when omitted.
+        eq.SetBandGain(1, -7f, EqualizerFilterType.Peaking, 1.0f);
+
+        while (player.PlaybackState == PlaybackState.Playing)
+        {
+            Thread.Sleep(100);
+        }
+    }
+}
+```
+
+`SetBandGain` does not lock, so call it from one thread at a time. The audio thread picks up the change on its next read, so a call that races with a block can take effect one block late.
+
+The second example records from the default microphone and runs it through `ChorusSampleProvider`, then `EqualizerSampleProvider`. `WaveInEvent` defaults to 8 kHz, and `Build` rejects bands at or above half the sample rate, so the recording format is set to 44.1 kHz mono. `BufferedWaveProvider` delivers 16-bit PCM. `ToSampleProvider()` converts it to the 32-bit float format that the effects require.
+
+Use headphones. Monitoring a microphone through speakers feeds the output back into the input.
+
+```csharp
+using System;
+using NAudio.Wave;
+using NAudioEffects;
+
+class MicChain
+{
+    static void Main()
+    {
+        var waveIn = new WaveInEvent
+        {
+            WaveFormat = new WaveFormat(44100, 16, 1)
+        };
+
+        var micBuffer = new BufferedWaveProvider(waveIn.WaveFormat)
+        {
+            BufferDuration = TimeSpan.FromSeconds(2),
+            DiscardOnBufferOverflow = true
+        };
+        waveIn.DataAvailable += (_, e) => micBuffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
+
+        ISampleProvider mic = micBuffer.ToSampleProvider();
+
+        var chorus = new ChorusSampleProvider(mic)
+        {
+            RateHz = 0.5f,
+            DepthMs = 2.0f,
+            Mix = 0.2f,
+            BaseDelayMs = 15.0f
+        };
+
+        var eq = new EqualizerBuilder()
+            .AddLowShelf(100f, 3f, 0.707f)
+            .AddPeak(1000f, -4f, 1.0f)
+            .AddHighShelf(8000f, 2f, 0.707f)
+            .Build(chorus);
+
+        using var player = new WaveOutEvent();
+        player.Init(eq.ToWaveProvider());
+
+        waveIn.StartRecording();
+        player.Play();
+
+        Console.WriteLine("Monitoring the microphone. Press Enter to stop.");
+        Console.ReadLine();
+
+        waveIn.StopRecording();
+        player.Stop();
+        waveIn.Dispose();
+    }
+}
+```
+
 ## SilenceDetector
 The SilenceDetector class detects periods of silence in an audio stream. It can be used to identify sections of audio that are below a certain threshold. You can use it to process audio in real-time by calling Process repeatedly, and then call Complete to finalize the detection.
 
