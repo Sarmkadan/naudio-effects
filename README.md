@@ -4,6 +4,76 @@ DSP effects for NAudio (compressor, limiter, EQ, gate) as ISampleProvider.
 
 > v0.1 in progress.
 
+## Getting started
+
+Install the package from NuGet:
+
+```bash
+dotnet add package NAudioEffects --version 0.1.0
+```
+
+The example below loads a WAV file, adds a feedback delay (300 ms, feedback 0.4, mix 0.3), feeds the result into a compressor, plays it with `WaveOutEvent`, and writes the processed audio to `output.wav` as 16-bit PCM. `WaveOutEvent` uses the Windows WinMM API, so playback requires Windows. Each chain is built from a fresh `AudioFileReader` because the effects are stateful and the stream can only be read once.
+
+```csharp
+using System.Threading;
+using NAudio.Wave;
+using NAudioEffects;
+
+static class Program
+{
+    static CompressorSampleProvider BuildChain(ISampleProvider source) =>
+        new CompressorSampleProvider(new DelaySampleProvider(source)
+        {
+            DelayMs = 300f,
+            Feedback = 0.4f,
+            Mix = 0.3f
+        });
+
+    static void Main()
+    {
+        // Write the processed audio to a 16-bit PCM file.
+        using (var reader = new AudioFileReader("input.wav"))
+        {
+            WaveFileWriter.CreateWaveFile16("output.wav", BuildChain(reader));
+        }
+
+        // Play the processed audio.
+        using (var reader = new AudioFileReader("input.wav"))
+        using (var player = new WaveOutEvent())
+        {
+            player.Init(BuildChain(reader).ToWaveProvider());
+            player.Play();
+            while (player.PlaybackState == PlaybackState.Playing)
+            {
+                Thread.Sleep(100);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+`DelaySampleProvider` (constructor argument `maxDelayMs` sets the buffer size; the default is 2000 ms):
+
+| Parameter | Unit | Default | Sensible range | Notes |
+|---|---|---|---|---|
+| `maxDelayMs` (constructor) | ms | 2000 | ≥ the largest `DelayMs` you will use | Sizes the delay line; must be finite and ≥ 0 |
+| `DelayMs` | ms | 0 | 20–1000 | Must be between 0 and `maxDelayMs` |
+| `Feedback` | unitless (0–0.95) | 0.35 | 0.2–0.6 | Share of the delayed signal fed back; above ~0.7 the echoes ring for a long time |
+| `Mix` | unitless (0–1) | 0.5 | 0.1–0.5 | 0 = fully dry, 1 = fully wet |
+
+`CompressorSampleProvider` (its setters do not validate values; the ranges below are guidance):
+
+| Parameter | Unit | Default | Sensible range | Notes |
+|---|---|---|---|---|
+| `ThresholdDb` | dB (dBFS) | -20 | -30 to -10 | Level above which gain reduction starts |
+| `Ratio` | n:1 | 4 | 2–8 | Values below 1 are treated as 1 |
+| `AttackMs` | ms | 10 | 1–50 | How quickly the compressor reacts to a level increase |
+| `ReleaseMs` | ms | 100 | 50–500 | How quickly gain returns after the level drops |
+| `KneeDb` | dB | 6 | 0–12 | Width of the soft knee; 0 gives a hard knee |
+| `MakeupGainDb` | dB | 0 | 0–12 | Gain applied after compression to restore loudness |
+
 ## SilenceDetector
 The SilenceDetector class detects periods of silence in an audio stream. It can be used to identify sections of audio that are below a certain threshold. You can use it to process audio in real-time by calling Process repeatedly, and then call Complete to finalize the detection.
 
