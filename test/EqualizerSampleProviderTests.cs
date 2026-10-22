@@ -178,4 +178,222 @@ public class EqualizerSampleProviderTests
             
         Assert.Throws<ArgumentOutOfRangeException>(() => builder.Build(source));
     }
+
+    private class ArraySampleProvider : ISampleProvider
+    {
+        private readonly float[] _samples;
+        private int _position;
+
+        public ArraySampleProvider(float[] samples, int sampleRate = 44100)
+        {
+            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
+            _samples = samples;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int toRead = Math.Min(count, _samples.Length - _position);
+            if (toRead <= 0) return 0;
+
+            Array.Copy(_samples, _position, buffer, offset, toRead);
+            _position += toRead;
+            return toRead;
+        }
+    }
+
+    private static float[] CreateSine(int length, float frequency, int sampleRate = 44100)
+    {
+        var samples = new float[length];
+        for (int i = 0; i < length; i++)
+        {
+            samples[i] = 0.5f * MathF.Sin(2f * MathF.PI * frequency * i / sampleRate);
+        }
+        return samples;
+    }
+
+    private static float[] ReadAll(ISampleProvider provider, int length)
+    {
+        var output = new float[length];
+        int read = provider.Read(output, 0, length);
+        Assert.Equal(length, read);
+        return output;
+    }
+
+    private static readonly EqualizerBand[] TwoBands =
+    {
+        new(200f, 6f, 0.7f),
+        new(1000f, -9f, 1.4f, EqualizerFilterType.HighShelf)
+    };
+
+    [Fact]
+    public void Constructor_WithEmptyBandList_ThrowsArgumentException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+
+        Assert.Throws<ArgumentException>(() => new EqualizerSampleProvider(source, Array.Empty<EqualizerBand>()));
+    }
+
+    [Fact]
+    public void Constructor_WithNullBandList_ThrowsArgumentNullException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+
+        Assert.Throws<ArgumentNullException>(() => new EqualizerSampleProvider(source, (System.Collections.Generic.IReadOnlyList<EqualizerBand>)null!));
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, 1f)]
+    [InlineData(22050f, 0f, 1f)]
+    [InlineData(1000f, 25f, 1f)]
+    [InlineData(1000f, 0f, 0f)]
+    public void Constructor_WithInvalidBand_ThrowsArgumentOutOfRangeException(float frequency, float gainDb, float q)
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var bands = new[] { new EqualizerBand(frequency, gainDb, q) };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(source, bands));
+    }
+
+    [Fact]
+    public void Constructor_WithInvalidBandAtEightKilohertz_ThrowsForNyquist()
+    {
+        // The default 12 kHz top band is above Nyquist for 8 kHz audio.
+        var source = new ConstantSampleProvider(0.5f, 1024, sampleRate: 8000);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new EqualizerSampleProvider(source, bandCount: 5));
+    }
+
+    [Fact]
+    public void Constructor_WithValidBands_ExposesBandsAndCount()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Equal(2, eq.BandCount);
+        Assert.Equal(TwoBands[0], eq.GetBand(0));
+        Assert.Equal(TwoBands[1], eq.GetBand(1));
+    }
+
+    [Fact]
+    public void UpdateBand_WithValidBand_ReplacesSettings()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+        var replacement = new EqualizerBand(500f, 3f, 2f);
+
+        eq.UpdateBand(1, replacement);
+
+        Assert.Equal(replacement, eq.GetBand(1));
+    }
+
+    [Fact]
+    public void UpdateBand_WithInvalidBandIndex_ThrowsArgumentOutOfRangeException()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.UpdateBand(2, new EqualizerBand(500f, 3f)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.UpdateBand(-1, new EqualizerBand(500f, 3f)));
+    }
+
+    [Theory]
+    [InlineData(0f, 3f, 1f)]
+    [InlineData(-50f, 3f, 1f)]
+    [InlineData(22050f, 3f, 1f)]
+    [InlineData(500f, 30f, 1f)]
+    [InlineData(500f, -30f, 1f)]
+    [InlineData(500f, 3f, 0f)]
+    [InlineData(500f, 3f, -1f)]
+    public void UpdateBand_WithInvalidSettings_ThrowsAndLeavesBandUnchanged(float frequency, float gainDb, float q)
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.UpdateBand(0, new EqualizerBand(frequency, gainDb, q)));
+
+        Assert.Equal(TwoBands[0], eq.GetBand(0));
+        Assert.Equal(TwoBands[1], eq.GetBand(1));
+    }
+
+    [Fact]
+    public void SetBandGain_WithInvalidQ_ThrowsAndLeavesBandUnchanged()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.SetBandGain(0, 6f, EqualizerFilterType.LowShelf, 0f));
+
+        Assert.Equal(TwoBands[0], eq.GetBand(0));
+    }
+
+    [Fact]
+    public void SetBandGain_WithOutOfRangeGain_ThrowsAndLeavesBandUnchanged()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.SetBandGain(1, 24.5f));
+
+        Assert.Equal(TwoBands[1], eq.GetBand(1));
+    }
+
+    [Fact]
+    public void SetBandFrequency_WithInvalidFrequency_ThrowsAndLeavesBandUnchanged()
+    {
+        var source = new ConstantSampleProvider(0.5f, 1024);
+        var eq = new EqualizerSampleProvider(source, TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => eq.SetBandFrequency(0, 30000f));
+
+        Assert.Equal(TwoBands[0], eq.GetBand(0));
+    }
+
+    [Fact]
+    public void UpdateBand_WithInvalidSettings_LeavesPreviousCoefficientsIntact()
+    {
+        // Two identical equalizers process the same signal. One receives a rejected update;
+        // its output must still match the untouched one sample-for-sample.
+        float[] signal = CreateSine(2048, 200f);
+        var reference = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+        var rejected = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => rejected.UpdateBand(0, new EqualizerBand(200f, 40f, 0.7f)));
+
+        float[] expected = ReadAll(reference, signal.Length);
+        float[] actual = ReadAll(rejected, signal.Length);
+        Assert.Equal(expected, actual);
+
+        // The filter must actually be shaping the signal, otherwise the comparison proves nothing.
+        Assert.NotEqual(signal, expected);
+    }
+
+    [Fact]
+    public void UpdateBand_AfterProcessing_WithRejectedUpdate_KeepsFilterAppliedToNextBlock()
+    {
+        // Process a block so the filters are built, then send a rejected update, then process the next block.
+        float[] signal = CreateSine(4096, 200f);
+        var reference = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+        var rejected = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+
+        ReadAll(reference, 2048);
+        ReadAll(rejected, 2048);
+        Assert.Throws<ArgumentOutOfRangeException>(() => rejected.UpdateBand(1, new EqualizerBand(1000f, 0f, -2f)));
+
+        Assert.Equal(ReadAll(reference, 2048), ReadAll(rejected, 2048));
+    }
+
+    [Fact]
+    public void UpdateBand_WithValidSettings_ChangesOutput()
+    {
+        float[] signal = CreateSine(2048, 200f);
+        var unchanged = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+        var updated = new EqualizerSampleProvider(new ArraySampleProvider(signal), TwoBands);
+
+        updated.UpdateBand(0, new EqualizerBand(200f, -12f, 0.7f));
+
+        Assert.NotEqual(ReadAll(unchanged, signal.Length), ReadAll(updated, signal.Length));
+    }
 }
