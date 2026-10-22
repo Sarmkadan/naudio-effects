@@ -23,23 +23,52 @@ namespace NAudioEffects
 
         // Default parameters
         private const float DefaultBaseDelayMs = 20.0f;
-        private const float DefaultRateHz = 0.3f; // Typical chorus rate
-        private const float DefaultDepthMs = 5.0f; // Typical chorus depth
+
+        private float _rateHz = ChorusOptions.DefaultRateHz;
+        private float _depthMs = ChorusOptions.DefaultDepthMs;
+        private float _mix = ChorusOptions.DefaultMix;
 
         /// <summary>
-        /// Gets or sets the LFO rate in Hz (0.1-5).
+        /// Gets or sets the LFO rate in Hz (greater than 0, at most 20).
         /// </summary>
-        public float RateHz { get; set; } = DefaultRateHz;
+        /// <exception cref="ArgumentOutOfRangeException">The value is not in (0, 20].</exception>
+        public float RateHz
+        {
+            get => _rateHz;
+            set
+            {
+                ChorusOptions.ValidateRateHz(value, nameof(RateHz));
+                _rateHz = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the modulation depth in milliseconds (0-10).
+        /// Gets or sets the modulation depth in milliseconds (greater than 0, at most 50).
         /// </summary>
-        public float DepthMs { get; set; } = DefaultDepthMs;
+        /// <exception cref="ArgumentOutOfRangeException">The value is not in (0, 50].</exception>
+        public float DepthMs
+        {
+            get => _depthMs;
+            set
+            {
+                ChorusOptions.ValidateDepthMs(value, nameof(DepthMs));
+                _depthMs = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the mix level (0 = dry only, 1 = wet only).
         /// </summary>
-        public float Mix { get; set; } = 0.3f;
+        /// <exception cref="ArgumentOutOfRangeException">The value is not in [0, 1].</exception>
+        public float Mix
+        {
+            get => _mix;
+            set
+            {
+                ChorusOptions.ValidateMix(value, nameof(Mix));
+                _mix = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the base delay time in milliseconds (default 20ms).
@@ -47,7 +76,8 @@ namespace NAudioEffects
         public float BaseDelayMs { get; set; } = DefaultBaseDelayMs;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ChorusSampleProvider"/> class.
+        /// Initializes a new instance of the <see cref="ChorusSampleProvider"/> class
+        /// with default parameters.
         /// </summary>
         /// <param name="source">The source sample provider.</param>
         public ChorusSampleProvider(ISampleProvider source)
@@ -59,6 +89,27 @@ namespace NAudioEffects
             _sampleRate = source.WaveFormat.SampleRate;
             _delayBuffer = new CircularBuffer((int)(_sampleRate * 0.05f)); // 50ms buffer
             UpdateDelayParameters();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ChorusSampleProvider"/> class
+        /// using the values in <paramref name="options"/>. The options are validated first
+        /// and their values are copied, so later changes to <paramref name="options"/>
+        /// do not affect this instance.
+        /// </summary>
+        /// <param name="source">The source sample provider.</param>
+        /// <param name="options">The chorus configuration.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">A value in <paramref name="options"/> is out of range.</exception>
+        public ChorusSampleProvider(ISampleProvider source, ChorusOptions options)
+            : this(source)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
+            RateHz = options.RateHz;
+            DepthMs = options.DepthMs;
+            Mix = options.Mix;
         }
 
         /// <summary>

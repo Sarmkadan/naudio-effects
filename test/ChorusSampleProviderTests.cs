@@ -220,5 +220,130 @@ namespace NAudioEffects.Tests
                 Assert.Equal(fullBuffer[i], chunkedBuffer[i], 7); // 7 decimal places for float equality
             }
         }
+
+        [Fact]
+        public void Constructor_WithNullOptions_ThrowsArgumentNullException()
+        {
+            var source = new SineWaveProvider(440f, 44100f);
+
+            Assert.Throws<ArgumentNullException>(() => new ChorusSampleProvider(source, null!));
+        }
+
+        [Fact]
+        public void Constructor_WithOptions_CopiesValues()
+        {
+            var source = new SineWaveProvider(440f, 44100f);
+            var options = new ChorusOptions { RateHz = 2f, DepthMs = 10f, Mix = 0.5f };
+
+            var chorus = new ChorusSampleProvider(source, options);
+
+            Assert.Equal(2f, chorus.RateHz);
+            Assert.Equal(10f, chorus.DepthMs);
+            Assert.Equal(0.5f, chorus.Mix);
+
+            // Later changes to the options object must not leak into the provider.
+            options.RateHz = 4f;
+            Assert.Equal(2f, chorus.RateHz);
+        }
+
+        [Fact]
+        public void Constructor_WithInvalidOptions_ThrowsArgumentOutOfRange()
+        {
+            var source = new SineWaveProvider(440f, 44100f);
+            var options = new ChorusOptions { DepthMs = 0f };
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new ChorusSampleProvider(source, options));
+            Assert.Equal(nameof(ChorusOptions.DepthMs), ex.ParamName);
+        }
+
+        [Fact]
+        public void Constructor_WithDefaultOptions_MatchesParameterlessConstructor()
+        {
+            var source = new SineWaveProvider(440f, 44100f);
+
+            var chorus = new ChorusSampleProvider(source, ChorusOptions.Default);
+
+            var reference = new ChorusSampleProvider(source);
+            Assert.Equal(reference.RateHz, chorus.RateHz);
+            Assert.Equal(reference.DepthMs, chorus.DepthMs);
+            Assert.Equal(reference.Mix, chorus.Mix);
+        }
+
+        [Theory]
+        [InlineData(float.Epsilon)]
+        [InlineData(20f)]
+        public void RateHz_WithinRange_IsAccepted(float rate)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+
+            chorus.RateHz = rate;
+
+            Assert.Equal(rate, chorus.RateHz);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(-float.Epsilon)]
+        [InlineData(20.0001f)]
+        public void RateHz_OutsideRange_ThrowsAndKeepsPreviousValue(float rate)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+            float previous = chorus.RateHz;
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => chorus.RateHz = rate);
+            Assert.Equal(nameof(ChorusSampleProvider.RateHz), ex.ParamName);
+            Assert.Equal(previous, chorus.RateHz);
+        }
+
+        [Theory]
+        [InlineData(float.Epsilon)]
+        [InlineData(50f)]
+        public void DepthMs_WithinRange_IsAccepted(float depth)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+
+            chorus.DepthMs = depth;
+
+            Assert.Equal(depth, chorus.DepthMs);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(-float.Epsilon)]
+        [InlineData(50.0001f)]
+        public void DepthMs_OutsideRange_ThrowsAndKeepsPreviousValue(float depth)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+            float previous = chorus.DepthMs;
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => chorus.DepthMs = depth);
+            Assert.Equal(nameof(ChorusSampleProvider.DepthMs), ex.ParamName);
+            Assert.Equal(previous, chorus.DepthMs);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(1f)]
+        public void Mix_WithinRange_IsAccepted(float mix)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+
+            chorus.Mix = mix;
+
+            Assert.Equal(mix, chorus.Mix);
+        }
+
+        [Theory]
+        [InlineData(-float.Epsilon)]
+        [InlineData(1.0001f)]
+        public void Mix_OutsideRange_ThrowsAndKeepsPreviousValue(float mix)
+        {
+            var chorus = new ChorusSampleProvider(new SineWaveProvider(440f, 44100f));
+            float previous = chorus.Mix;
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => chorus.Mix = mix);
+            Assert.Equal(nameof(ChorusSampleProvider.Mix), ex.ParamName);
+            Assert.Equal(previous, chorus.Mix);
+        }
     }
 }
