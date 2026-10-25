@@ -29,6 +29,17 @@ public class EnvelopeFollower
     }
 
     /// <summary>
+    /// Initializes a new instance of the EnvelopeFollower from a validated settings struct.
+    /// </summary>
+    /// <param name="settings">The attack, release and sample rate settings.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the settings are invalid.</exception>
+    public EnvelopeFollower(EnvelopeSettings settings)
+    {
+        settings.EnsureValid();
+        SetParameters(settings.AttackMs, settings.ReleaseMs, settings.SampleRate);
+    }
+
+    /// <summary>
     /// Sets the time constants for the envelope follower.
     /// </summary>
     /// <param name="attackMs">Attack time in milliseconds (ms).</param>
