@@ -9,8 +9,6 @@ public class GainSampleProvider : EffectSampleProviderBase
 {
     private const float DefaultSmoothingMs = 10.0f;
     private const float MillisecondsPerSecond = 1000.0f;
-    private const float DbPerDecade = 20.0f;
-    private const float LinearGainBase = 10.0f;
 
     private float _currentGainLinear = 1.0f;
     private float _targetGainLinear = 1.0f;
@@ -33,10 +31,10 @@ public class GainSampleProvider : EffectSampleProviderBase
     /// </summary>
     public float GainDb
     {
-        get => GainLinearToDb(_currentGainLinear);
+        get => DbConversion.LinearToDb(_currentGainLinear);
         set
         {
-            var newGainLinear = GainDbToLinear(value);
+            var newGainLinear = DbConversion.DbToLinear(value);
             if (Math.Abs(_targetGainLinear - newGainLinear) > float.Epsilon)
             {
                 _targetGainLinear = newGainLinear;
@@ -93,20 +91,5 @@ public class GainSampleProvider : EffectSampleProviderBase
 
             buffer[offset + i] *= _currentGainLinear;
         }
-    }
-
-    private static float GainDbToLinear(float db)
-    {
-        return MathF.Pow(LinearGainBase, db / DbPerDecade);
-    }
-
-    private static float GainLinearToDb(float linear)
-    {
-        if (linear <= 0)
-        {
-            return float.NegativeInfinity;
-        }
-
-        return DbPerDecade * MathF.Log10(linear);
     }
 }

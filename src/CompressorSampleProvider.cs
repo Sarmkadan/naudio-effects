@@ -82,12 +82,12 @@ namespace NAudioEffects
             _envelopeFollower.Process(buffer, offset, count);
 
             float envelope = _envelopeFollower.Envelope;
-            float envelopeDb = LinearToDb(envelope);
+            float envelopeDb = DbConversion.LinearToDb(envelope);
 
             float threshold = ThresholdDb;
             float knee = Math.Max(KneeDb, 0f);
             float ratio = Math.Max(Ratio, 1f);
-            float makeupGainLinear = DbToLinear(MakeupGainDb);
+            float makeupGainLinear = DbConversion.DbToLinear(MakeupGainDb);
 
             float overshoot = envelopeDb - threshold;
             float gainReductionDb;
@@ -110,7 +110,7 @@ namespace NAudioEffects
             }
 
             CurrentGainReductionDb = gainReductionDb;
-            float gain = DbToLinear(gainReductionDb) * makeupGainLinear;
+            float gain = DbConversion.DbToLinear(gainReductionDb) * makeupGainLinear;
 
             for (int i = 0; i < count; i++)
             {

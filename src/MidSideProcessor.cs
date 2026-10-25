@@ -30,7 +30,7 @@ namespace NAudioEffects
             get => _midGainDb;
             set
             {
-                var newGainLinear = DbToLinear(value);
+                var newGainLinear = DbConversion.DbToLinear(value);
                 if (Math.Abs(_targetMidGainLinear - newGainLinear) > float.Epsilon)
                 {
                     _midGainDb = value;
@@ -48,7 +48,7 @@ namespace NAudioEffects
             get => _sideGainDb;
             set
             {
-                var newGainLinear = DbToLinear(value);
+                var newGainLinear = DbConversion.DbToLinear(value);
                 if (Math.Abs(_targetSideGainLinear - newGainLinear) > float.Epsilon)
                 {
                     _sideGainDb = value;

@@ -60,12 +60,12 @@ namespace NAudioEffects
             _envelopeFollower.Process(buffer, offset, count);
 
             float envelope = _envelopeFollower.Envelope;
-            float envelopeDb = LinearToDb(envelope);
+            float envelopeDb = DbConversion.LinearToDb(envelope);
 
             float gainReductionDb = Math.Max(0, envelopeDb - CeilingDb);
 
             CurrentGainReductionDb = gainReductionDb;
-            float gain = DbToLinear(-gainReductionDb);
+            float gain = DbConversion.DbToLinear(-gainReductionDb);
 
             for (int i = 0; i < count; i++)
             {

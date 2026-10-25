@@ -115,7 +115,7 @@ namespace NAudioEffects
             _envelopeFollower.Process(buffer, offset, count);
 
             float envelope = _envelopeFollower.Envelope;
-            float thresholdLinear = DbToLinear(ThresholdDb);
+            float thresholdLinear = DbConversion.DbToLinear(ThresholdDb);
 
             // Check if we should open or close the gate
             bool aboveThreshold = envelope > thresholdLinear;

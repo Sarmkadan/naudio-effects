@@ -69,7 +69,7 @@ namespace NAudioEffects
         /// <returns>The linear amplitude, where 1 corresponds to 0 dB.</returns>
         public static float DbToLinear(float db)
         {
-            return MathF.Pow(10.0f, db / 20.0f);
+            return DbConversion.DbToLinear(db);
         }
 
         /// <summary>
@@ -79,12 +79,7 @@ namespace NAudioEffects
         /// <returns>The decibel value (dB); returns <see cref="float.NegativeInfinity"/> for non-positive input.</returns>
         public static float LinearToDb(float linear)
         {
-            if (linear <= 0f)
-            {
-                // Avoid log of zero or negative values.
-                return float.NegativeInfinity;
-            }
-            return 20.0f * MathF.Log10(linear);
+            return DbConversion.LinearToDb(linear);
         }
     }
 }
