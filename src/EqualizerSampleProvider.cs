@@ -16,7 +16,7 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
     private readonly EqualizerBand[] _bands;
 
     // When any band changes we defer rebuilding the BiQuadFilter objects until the next Read.
-    private bool _filtersDirty = true;
+    private volatile bool _filtersDirty = true;
 
     /// <summary>
     /// Gets the number of frequency bands in the equalizer.
@@ -192,18 +192,30 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
     {
         int sampleRate = WaveFormat.SampleRate;
 
-        // Settings were validated when they were stored, so rebuilding cannot fail on bad input.
-        for (int i = 0; i < _bands.Length; i++)
+        // Clear the flag before reading the bands. If UpdateBand runs while we rebuild, it sets the flag
+        // again and the change is applied on the next pass instead of being lost.
+        _filtersDirty = false;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            EqualizerBand band = _bands[i];
-
-            _filters[i] = band.FilterType switch
+            // Settings were validated when they were stored, so rebuilding cannot fail on bad input.
+            for (int i = 0; i < _bands.Length; i++)
             {
-                EqualizerFilterType.LowShelf => BiQuadFilter.LowShelf(sampleRate, band.Frequency, band.Q, band.GainDb),
-                EqualizerFilterType.HighShelf => BiQuadFilter.HighShelf(sampleRate, band.Frequency, band.Q, band.GainDb),
-                _ => BiQuadFilter.PeakingEQ(sampleRate, band.Frequency, band.Q, band.GainDb)
-            };
+                cancellationToken.ThrowIfCancellationRequested();
+                EqualizerBand band = _bands[i];
+
+                _filters[i] = band.FilterType switch
+                {
+                    EqualizerFilterType.LowShelf => BiQuadFilter.LowShelf(sampleRate, band.Frequency, band.Q, band.GainDb),
+                    EqualizerFilterType.HighShelf => BiQuadFilter.HighShelf(sampleRate, band.Frequency, band.Q, band.GainDb),
+                    _ => BiQuadFilter.PeakingEQ(sampleRate, band.Frequency, band.Q, band.GainDb)
+                };
+            }
+        }
+        catch
+        {
+            // A partial rebuild must not be used; keep the filters dirty so the next pass retries.
+            _filtersDirty = true;
+            throw;
         }
     }
 
@@ -216,7 +228,6 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
         if (_filtersDirty)
         {
             UpdateAllFilters();
-            _filtersDirty = false;
         }
 
         // Cache the filter array locally to avoid repeated field accesses inside the inner loop.
@@ -264,7 +275,6 @@ public class EqualizerSampleProvider : EffectSampleProviderBase
                 if (_filtersDirty)
                 {
                     UpdateAllFilters(cancellationToken);
-                    _filtersDirty = false;
                 }
                 ProcessBlock(buffer, offset + processed, samplesRead);
             }
