@@ -201,7 +201,7 @@ namespace NAudioEffects
                     float crushedSample = ApplyBitCrushing(inputSample, BitDepth);
 
                     // Mix dry and wet signals
-                    buffer[sampleIndex + channelIndex] = (inputSample * dryMix) + (crushedSample * wetMix);
+                    buffer[sampleIndex + channelIndex] = MixWetDry(inputSample, crushedSample, wetMix);
                 }
                 else
                 {

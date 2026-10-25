@@ -63,6 +63,18 @@ namespace NAudioEffects
         protected abstract void ProcessBlock(float[] buffer, int offset, int samplesRead);
 
         /// <summary>
+        /// Mixes a dry and a wet sample using a complementary wet/dry balance.
+        /// </summary>
+        /// <param name="dry">The unprocessed (dry) sample value.</param>
+        /// <param name="wet">The processed (wet) sample value.</param>
+        /// <param name="wetMix">The wet proportion, where 0 is fully dry and 1 is fully wet. The dry proportion is <c>1 - wetMix</c>.</param>
+        /// <returns>The blended sample value.</returns>
+        protected float MixWetDry(float dry, float wet, float wetMix)
+        {
+            return (dry * (1.0f - wetMix)) + (wet * wetMix);
+        }
+
+        /// <summary>
         /// Converts a decibel value to a linear amplitude.
         /// </summary>
         /// <param name="db">The decibel value (dB), typically relative to digital full scale (dBFS).</param>

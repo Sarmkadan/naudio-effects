@@ -167,8 +167,6 @@ namespace NAudioEffects
             int delaySamples = Math.Min(
                 (int)Math.Round(_delayMs * _samplesPerMillisecond),
                 _delayLines[0].Length - 1);
-            float dryMix = 1f - _mix;
-
             for (int sample = 0; sample < samplesRead; sample++)
             {
                 int channel = sample % channels;
@@ -189,7 +187,7 @@ namespace NAudioEffects
 
                 delayLine[writePosition & _masks[channel]] = input + (delayed * _feedback);
                 _writePositions[channel] = (writePosition + 1) & _masks[channel];
-                buffer[offset + sample] = (input * dryMix) + (delayed * _mix);
+                buffer[offset + sample] = MixWetDry(input, delayed, _mix);
             }
         }
 

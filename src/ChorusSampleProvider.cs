@@ -192,7 +192,6 @@ namespace NAudioEffects
         private void ProcessSample(float[] buffer, int sampleOffset, int channel, float lfoIncrement)
         {
             float wetMix = Math.Clamp(Mix, 0.0f, 1.0f);
-            float dryMix = 1.0f - wetMix;
 
             // If mix is 0 (dry only), bypass all processing for bit-identical output
             if (wetMix == 0.0f)
@@ -223,7 +222,7 @@ namespace NAudioEffects
             float delayedSample = ReadWithLinearInterpolation(currentDelaySamples);
 
             // Mix dry and wet signals
-            buffer[sampleOffset] = (inputSample * dryMix) + (delayedSample * wetMix);
+            buffer[sampleOffset] = MixWetDry(inputSample, delayedSample, wetMix);
         }
 
         /// <summary>

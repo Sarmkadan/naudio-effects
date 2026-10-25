@@ -120,7 +120,6 @@ namespace NAudioEffects
         private void ProcessChannel(float[] buffer, int offset, int samplesRead, int channelIndex, float lfoIncrement)
         {
             float wetMix = Math.Clamp(Mix, 0.0f, 1.0f);
-            float dryMix = 1.0f - wetMix;
 
             // Update LFO value for this channel
             _lfoValue = (float)Math.Sin(_lfoPhase + (channelIndex * 0.5f)); // Slight phase shift per channel for stereo effect
@@ -154,7 +153,7 @@ namespace NAudioEffects
                 delayedSample += delayedSample * Feedback;
 
                 // Mix dry and wet signals
-                buffer[sampleIndex] = (inputSample * dryMix) + (delayedSample * wetMix);
+                buffer[sampleIndex] = MixWetDry(inputSample, delayedSample, wetMix);
             }
         }
 
