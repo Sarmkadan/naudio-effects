@@ -7,6 +7,9 @@ namespace NAudioEffects;
 /// </summary>
 public class EnvelopeFollower
 {
+    // Values below this magnitude are flushed to zero (float subnormals start near 1.2e-38)
+    private const float DenormalThreshold = 1e-30f;
+
     private float _envelope = 0f;
     private float _attackCoefficient = 0f;
     private float _releaseCoefficient = 0f;
@@ -71,6 +74,12 @@ public class EnvelopeFollower
             else
             {
                 _envelope = _releaseCoefficient * _envelope + (1f - _releaseCoefficient) * sample;
+            }
+
+            // Release decays toward zero forever on silence; flush the tail so it never goes subnormal
+            if (MathF.Abs(_envelope) < DenormalThreshold)
+            {
+                _envelope = 0f;
             }
         }
     }

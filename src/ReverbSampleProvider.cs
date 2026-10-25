@@ -20,6 +20,9 @@ namespace NAudioEffects
         // Allpass feedback coefficients
         private const float AllpassFeedback = 0.5f;
 
+        // Feedback values below this magnitude are flushed to zero (float subnormals start near 1.2e-38)
+        private const float DenormalThreshold = 1e-30f;
+
         private readonly float[][] _combBuffers;  // One per comb filter per channel
         private readonly float[][] _allpassBuffers; // One per allpass filter per channel
         private readonly int[] _combDelayLengths;
@@ -166,6 +169,18 @@ namespace NAudioEffects
             }
         }
 
+        /// <summary>
+        /// Flushes values below <see cref="DenormalThreshold"/> in magnitude to zero.
+        /// Keeps decaying feedback tails out of the subnormal range, where float math
+        /// becomes very slow on many CPUs.
+        /// </summary>
+        /// <param name="value">The value to check.</param>
+        /// <returns>Zero if the value is tiny, otherwise the value unchanged.</returns>
+        private static float FlushDenormal(float value)
+        {
+            return MathF.Abs(value) < DenormalThreshold ? 0.0f : value;
+        }
+
         private void ProcessChannel(float[] buffer, int offset, int samplesRead, int channelIndex)
         {
             float[] combOut = new float[samplesRead];
@@ -207,7 +222,7 @@ namespace NAudioEffects
 
                     // Apply comb filter with feedback
                     float newValue = input + (output * feedback * dampingFactor);
-                    combBuffer[combIndex] = newValue;
+                    combBuffer[combIndex] = FlushDenormal(newValue);
 
                     combOut[s] += output;
 
@@ -237,7 +252,7 @@ namespace NAudioEffects
                     float allpassOut = -AllpassFeedback * input + output + AllpassFeedback * allpassBuffer[allpassIndex];
 
                     // Store and advance
-                    allpassBuffer[allpassIndex] = input + (AllpassFeedback * allpassOut);
+                    allpassBuffer[allpassIndex] = FlushDenormal(input + (AllpassFeedback * allpassOut));
                     allpassIn[s] = allpassOut;
 
                     allpassIndex = (allpassIndex + 1) % allpassBuffer.Length;
